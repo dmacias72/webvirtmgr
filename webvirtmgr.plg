@@ -1,0 +1,1551 @@
+<?xml version='1.0' standalone='yes'?>
+<PLUGIN>
+
+<!--
+This Plugin installs WebVirtMgr unRaid 6.0 ONLY. All dependencies are installed as needed and everything is controlable from the webgui.
+
+You'll have to add users and passwords from the console manually.
+Adding superusers
+INSTALL_DIRECTORY/manage.py createsuperuser --username=USERNAME
+
+Credits:
+Troy Wagner: Heavily updated this plugin originally created / modified by Tim Alexander.
+	This now contains more options and some validity to information added as to not break the app with invalid options.
+	When invalid options are found, default values are loaded in its place.
+	Spaces will be replaced with _ as passing anythign with a space breaks these plugins.
+	Empty values which also break plugins, are replaced with default values also.
+Infuencer
+Benni-Chan: Much of the plug-in structure from his original plug-ins. Much of that code is still in place.
+Anatoliy Guskov aka retspen: for creating webvirtmgr https://github.com/retspen/webvirtmgr
+
+-->
+
+
+<FILE Name="/tmp/plugin-prepare" Run="/bin/bash">
+<INLINE>
+# Wait until network is ready
+timer=30
+while [ $timer -gt 0 ]; do
+	gateway=$(route -n | awk '/^0.0.0.0/ {print $2}')
+	if [ -n "$gateway" ] &amp;&amp; [ $(ping -q -n -c 1 $gateway | awk -F, '/received/ {print $2}' | awk '{print $1}') -eq 1 ]; then
+		break
+	fi
+	timer=$((timer-1))
+	sleep 1
+done
+if [ $timer -eq 0 ]; then
+	echo "No network communication !!!"
+fi
+# Remove this script
+rm -f /tmp/plugin-prepare
+</INLINE>
+</FILE>
+
+<FILE Name="/boot/packages/libvirt-1.2.0-x86_64-1ponce.txz" Run="upgradepkg --install-new">
+<URL>http://ponce.cc/slackware/slackware64-14.1/old.packages/libvirt-1.2.0-x86_64-1ponce.txz</URL>
+<MD5>5adffe4e337c67769f66d29348f7fad3</MD5>
+</FILE>
+
+<FILE Name="/boot/packages/pip-1.5.6-x86_64-1_uqv.txz" Run="upgradepkg --install-new">
+<URL>http://www.vislab.uq.edu.au/slackware64/14.1/pip-1.5.6-x86_64-1_uqv.txz</URL>
+</FILE>
+
+<FILE Name="/boot/packages/pysetuptools-3.6-x86_64-1ponce.txz" Run="upgradepkg --install-new">
+<URL>http://ponce.cc/slackware/slackware64-14.1/packages/pysetuptools-3.6-x86_64-1ponce.txz</URL>
+<MD5>8ff5271f08e258ce46e8e96bebec66aa</MD5>
+</FILE>
+
+<FILE Name="/boot/packages/git-1.8.4-x86_64-1.txz" Run="upgradepkg --install-new">
+<URL>http://slackware.cs.utah.edu/pub/slackware/slackware64-14.1/slackware64/d/git-1.8.4-x86_64-1.txz</URL>
+<MD5>e24d44ec30e7afc16c5509c4d9446140</MD5>
+</FILE>
+
+<FILE Name="/boot/config/plugins/webvirtmgr/requirements.txt">
+<URL>--no-check-certificate https://raw.githubusercontent.com/retspen/webvirtmgr/master/requirements.txt</URL>
+</FILE>
+
+<FILE Name="/boot/config/plugins/webvirtmgr/webvirtmgr.png">
+<URL>--no-check-certificate https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.png</URL>
+</FILE>
+<FILE Name="/boot/config/plugins/images/device_status.png">
+<URL>https://raw.githubusercontent.com/dmacias72/unRAID_6.0/master/device_status.png</URL>
+</FILE>
+
+<FILE Name="/boot/config/plugins/images/new_config.png">
+<URL>https://raw.githubusercontent.com/dmacias72/unRAID_6.0/master/new_config.png</URL>
+</FILE>
+
+<FILE Name="/boot/config/plugins/images/information.png">
+<URL>https://raw.githubusercontent.com/dmacias72/unRAID_6.0/master/information.png</URL>
+</FILE>
+
+<!-- clean up previous install -->
+<FILE Name="/tmp/webvirtmgr-cleanup" Run="/bin/bash">
+<INLINE>
+<![CDATA[
+[ -d /usr/local/emhttp/plugins/webvirtmgr ] && rm -f -R /usr/local/emhttp/plugins/webvirtmgr
+[ -f /etc/rc.d/rc.webvirtmgr ] && rm -f /etc/rc.d/rc.webvirtmgr
+[ -f /boot/config/plugins/webvirtmgr/plgver.txt ] && rm -f /boot/config/plugins/webvirtmgr/plgver.txt
+rm /tmp/webvirtmgr-cleanup
+]]>
+</INLINE>
+</FILE>
+
+<FILE Name="/boot/config/plugins/webvirtmgr/plgver.txt">
+<INLINE>
+<![CDATA[
+1.0
+]]>
+</INLINE>
+</FILE>
+
+<FILE Name="/boot/config/plugins/webvirtmgr/webvirtmgr.cfg">
+<INLINE>
+<![CDATA[
+# webvirtmgr configuration:
+SERVICE="disable"
+INSTALLDIR="/usr/local/webvirtmgr"
+CONFIGDIR="/usr/local/webvirtmgr/webvirtmgr"
+LOGDIR=""
+CACHEDIR=""
+USESSL="no"
+PORT="8000"
+URLBASE=""
+RUNAS="nobody"
+BRANCH="master"
+REPO="https://github.com/retspen/webvirtmgr"
+PLG_STORAGESIZE="yes"
+PLG_DATACHECK="yes"
+]]>
+</INLINE>
+</FILE>
+
+<FILE Name="/tmp/hp-chkconf" Run="/bin/bash">
+<INLINE>
+<![CDATA[
+#!/bin/sh
+# This will check each entry in the config so nothing is missing, and if missing, sets to default
+CFGFILE=/boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+[ ! `cat "$CFGFILE" | grep SERVICE` ] && echo "SERVICE=\"disable\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep INSTALLDIR` ] && echo "INSTALLDIR=\"/usr/local/webvirtmgr\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep CONFIGDIR` ] && echo "CONFIGDIR=\"/usr/local/webvirtmgr/config\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep LOGDIR` ] && echo "LOGDIR=\"\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep CACHEDIR` ] && echo "CACHEDIR=\"\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep USESSL` ] && echo "USESSL=\"no\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep ^PORT` ] && echo "PORT=\"8000\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep URLBASE` ] && echo "URLBASE=\"\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep RUNAS` ] && echo "RUNAS=\"nobody\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep BRANCH` ] && echo "BRANCH=\"master\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep REPO` ] && echo "REPO=\"https://github.com/retspen/webvirtmgr\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep PLG_STORAGESIZE` ] && echo "PLG_STORAGESIZE=\"yes\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep PLG_DATACHECK` ] && echo "PLG_DATACHECK=\"yes\"" >> "$CFGFILE"
+rm /tmp/hp-chkconf
+]]>
+</INLINE>
+</FILE>
+
+<FILE Name="/etc/rc.d/rc.webvirtmgr" Mode="0770">
+<INLINE>
+<![CDATA[
+#!/bin/sh
+# start|stop|restart|enable|disable|install|update|storagesize|datacheck|updateplg|downgradeplg|latestversion|currentversion webvirtmgr.
+
+webvirtmgr_start()
+{
+	# no-op if not enabled
+	if [ "$SERVICE" != "enable" ]; then
+		sed -i 's/disable/enable/' "$CONFIG"
+	fi
+
+	# no-op if already running
+	PIDS=$(pgrep -f manage.py)
+	if [ "$PIDS" != "" ]; then
+		echo "webvirtmgr already running."
+		return
+	fi
+
+	# if directory doesn't exist or exe is not found, install it
+	if [[ "$INSTALLDIR" != "" &&  ! -e "$INSTALLDIR/manage.py" ]]; then
+		webvirtmgr_install
+	fi
+
+	echo "Starting Web Virt Manager: $CMDLINE"
+	sleep 1
+	sudo -H -u "$RUNAS" /bin/bash -c "nohup /usr/bin/python $INSTALLDIR/manage.py runserver 0:$PORT > /dev/null 2>&1 &"	
+
+	# Checks if the app started properly or not, giving it 10 seconds to create the PID file
+	TIMER=0
+	STARTFAIL="0"
+	sleep 2
+	while [ "$PIDS" != "" ]; do
+		let TIMER=$TIMER+1
+		sleep 1
+
+		if [ $TIMER -gt 10 ]; then
+			echo "Application did not start for some reason"
+			sleep 1
+			STARTFAIL="1"
+			break
+		fi
+	done
+
+	# Notify if start was successful or failed
+	if [ "$STARTFAIL" == "0" ]; then
+		echo "... Start OK"
+	else
+		echo "... Start Failed"
+	fi
+	sleep 1
+}
+
+webvirtmgr_stop()
+{
+	PIDS=$(pgrep -f manage.py)
+	echo "Stopping Web Virt Manager..."
+	sleep 1
+
+	# Send the kill command to gracefully shutdown
+	pkill -f manage.py 2> /dev/null
+
+	# Begin a timer for shutdown, force kill process if not shut down by end of timer
+	TIMER=0
+	while [ "$PIDS" = "" ]; do
+		let TIMER=$TIMER+1
+		sleep 1
+
+		if [ $TIMER -gt 10 ]; then
+			echo "Application has not shut down yet, killing the process"
+			sleep 1
+			pkill -9 -f manage.py 2> /dev/null
+			break
+		fi
+	done
+
+	echo "... Stop OK"
+	sleep 1
+}
+
+webvirtmgr_restart()
+{
+	webvirtmgr_stop
+	sleep 1
+	webvirtmgr_start
+}
+
+webvirtmgr_buttonstart()
+{
+	CONFIG="/boot/config/plugins/webvirtmgr/webvirtmgr.cfg"
+	if [[ "CONFIG" ]]; then
+		webvirtmgr_start
+	else
+		echo "No config file found. Press reinstall the plugin."
+		sleep 3
+	fi
+}
+
+webvirtmgr_update()
+{
+	RUNSTATUS="$1"
+	webvirtmgr_stop
+	sleep 1
+	webvirtmgr_install
+	sleep 1
+	if [ "$RUNSTATUS" == "Running" ]; then
+		webvirtmgr_start
+	fi
+}
+
+write_config()
+{
+	sleep 1
+	# Write to the config file
+	echo "# WebVirtMgr configuration:" > /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "SERVICE=\"$SERVICE\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "INSTALLDIR=\"$INSTALLDIR\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "CONFIGDIR=\"$CONFIGDIR\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "LOGDIR=\"$LOGDIR\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "CACHEDIR=\"$CACHEDIR\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "USESSL=\"$USESSL\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "PORT=\"$PORT\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "URLBASE=\"$URLBASE\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "RUNAS=\"$RUNAS\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "BRANCH=\"$BRANCH\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "REPO=\"$REPO\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "PLG_STORAGESIZE=\"$PLG_STORAGESIZE\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "PLG_DATACHECK=\"$PLG_DATACHECK\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	sleep 1
+}
+
+
+webvirtmgr_change_settings()
+{
+	INSTALLDIR="$1"
+	NEWCONFIGDIR="$2"
+
+	# This won't allow config files to mix with install files
+	if [ "$NEWCONFIGDIR" == "$INSTALLDIR" ]; then
+		NEWCONFIGDIR="$INSTALLDIR/config"
+	fi
+
+	# Creates new config dir and moves files from old one (Able to be relative to install dir)
+	if [[ "$CONFIGDIR" != "$NEWCONFIGDIR" ]]; then
+		ORIG_LOC=`pwd`
+		if [ ! -e "$INSTALLDIR" ]; then
+			mkdir -p "$INSTALLDIR"
+		fi
+		cd "$INSTALLDIR"
+		mkdir -p "$NEWCONFIGDIR"
+		cd "$NEWCONFIGDIR"
+		NEWCONFIGDIR=`pwd`
+		cd "$ORIG_LOC"
+        
+		# Moves AppData files to new config dir if its different than the old one, unless config.ini exists already
+		if [ "$CONFIGDIR" != "$NEWCONFIGDIR" ] && [ -e "$CONFIGDIR" ]; then
+			if [ -e "$NEWCONFIGDIR/config.ini" ]; then
+				rm -r "$CONFIGDIR"
+			else
+				cp -a "$CONFIGDIR/." "$NEWCONFIGDIR"
+				rm -r "$CONFIGDIR"
+			fi
+		fi
+	fi
+
+	CONFIGDIR="$NEWCONFIGDIR"
+	USESSL="$5"
+	PORT="$6"
+
+	LOGDIR="$3"
+	if [ "$LOGDIR" == "!" ] || [ "$LOGDIR" == "$INSTALLDIR" ] || [ "$LOGDIR" == "$CONFIGDIR" ] || [ "$LOGDIR" == "$CONFIGDIR/logs" ] || [ "$LOGDIR" == "logs" ]; then
+		LOGDIR=""
+		mkdir -p "$CONFIGDIR/logs"
+	else
+		mkdir -p "$LOGDIR"
+	fi
+
+	CACHEDIR="$4"
+	if [ "$CACHEDIR" == "!" ] || [ "$CACHEDIR" == "$INSTALLDIR" ] || [ "$CACHEDIR" == "$CONFIGDIR" ] || [ "$CACHEDIR" == "$CONFIGDIR/cache" ] || [ "$CACHEDIR" == "cache" ]; then
+		CACHEDIR=""
+		mkdir -p "$CONFIGDIR/cache"
+	else
+		mkdir -p "$CACHEDIR"
+	fi
+
+	URLBASE="$7"
+	if [ $URLBASE == "!" ]; then
+		URLBASE=
+	fi
+
+	RUNAS="$8"
+
+	# create webvirtmgr user if necessary
+	if [[ "$RUNAS" != "nobody" && "$RUNAS" != "root" ]]; then
+		if ( ! grep -q ^$RUNAS /etc/passwd ); then
+			useradd -r -g users -d / -s /bin/false "$RUNAS" &> /dev/null
+			cp /etc/passwd /etc/shadow /boot/config
+		fi
+	fi
+
+	if [ -d "$INSTALLDIR" ]; then
+		OWNER=$(stat -c %U "$INSTALLDIR")
+		if [ "$OWNER" != "$RUNAS" ]; then
+			chown -R "$RUNAS":users "$INSTALLDIR"
+		fi
+	fi
+
+	if [ -d "$CONFIGDIR" ]; then
+		OWNER2=$(stat -c %U "$CONFIGDIR")
+		if [ "$OWNER2" != "$RUNAS" ]; then
+			chown -R "$RUNAS":users "$CONFIGDIR"
+		fi
+	fi
+
+	OLDREPO="$REPO"
+	REPO="$9"
+	OLDBRANCH="$BRANCH"
+	BRANCH="${10}"
+	
+	PLG_STORAGESIZE="${11}"
+	PLG_DATACHECK="${12}"
+
+	# This re-installs the application if branch or repo is changed
+	if [ "$OLDBRANCH" != "$BRANCH" ] || [ "$OLDREPO" != "$REPO" ]; then
+
+		# Remove current files so no incompatibilieties occur if new repo is supplied
+		if [ "$OLDREPO" != "$REPO" ]; then
+			rm -r "$CONFIGDIR"
+			rm -r "$INSTALLDIR"
+
+			# Check for master repo otherwise install first one found
+			declare -a GETBRANCHES=(`git ls-remote --heads "$REPO" | sed -n 's!.*refs/heads/\(.*\)!\\1!p'`)
+			MATCH=0
+			for ELEMENT in "${GETBRANCHES[@]}"
+			do
+				if [[ "$ELEMENT" == "master" || "$ELEMENT" == "Master" ]]; then
+					BRANCH="$ELEMENT"
+					MATCH=1
+				fi
+			done
+			if [ "$MATCH" == "0" ]; then
+				BRANCH=`echo "${GETBRANCHES[0]}"`
+			fi
+		fi
+
+		# Install selected repo and branch
+		webvirtmgr_install
+	fi
+}
+
+webvirtmgr_enable()
+{
+	webvirtmgr_stop
+	SERVICE=enable
+	webvirtmgr_change_settings $1 $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12}
+	write_config
+	webvirtmgr_start
+}
+
+webvirtmgr_disable()
+{
+	webvirtmgr_stop
+	SERVICE=disable
+	webvirtmgr_change_settings $1 $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12}
+	write_config
+}
+
+webvirtmgr_install()
+{
+	echo "Installing latest version of webvirtmgr from $REPO..."
+
+	if [ ! -d "$INSTALLDIR" ]; then 
+		mkdir -p "$INSTALLDIR"
+		if [ ! -d "$INSTALLDIR" ]; then 
+			echo "Unable to create directory $INSTALLDIR, aborting installation"
+			exit 1
+		fi
+	fi
+
+	if [ ! -d "$CONFIGDIR" ]; then 
+		mkdir -p "$CONFIGDIR"
+	fi
+
+	# Clone from GIT to a temp folder, then move to final install dir
+	cd /tmp
+	git clone -b "$BRANCH" "$REPO" webvirtmgr
+	cd /
+	cp -af /tmp/webvirtmgr/. "$INSTALLDIR"
+	rm -Rf /tmp/webvirtmgr
+	cp -f $INSTALLDIR/webvirtmgr/local/local_settings.py.example $INSTALLDIR/webvirtmgr/local/local_settings.py
+	/usr/bin/python $INSTALLDIR/manage.py syncdb --noinput
+	/usr/bin/python $INSTALLDIR/manage.py collectstatic --noinput
+
+	OWNER=$(stat -c %U "$INSTALLDIR")
+	if [ "$OWNER" != "$RUNAS" ]; then
+		chown -R "$RUNAS":users "$INSTALLDIR"
+	fi
+
+	OWNER2=$(stat -c %U "$CONFIGDIR")
+	if [ "$OWNER2" != "$RUNAS" ]; then
+		chown -R "$RUNAS":users "$CONFIGDIR"
+	fi
+
+	# Check for installed files after extract. Display ok if successful or failed if not successful
+	if [ -f "$INSTALLDIR/manage.py" ]; then
+		echo "... Install OK"
+	else
+		echo "... Install Failed"
+	fi
+	sleep 1
+}
+
+webvirtmgr_newver()
+{
+	# This gets the latest version, if develop is selected, gets latest DEVELOP and defaults to MASTER if none found
+	REPOVER="${REPO}/commits/${BRANCH}.atom"
+	NEWVER=`wget -qO- --no-check-certificate "$REPOVER" |  grep -m 1 "2008:Grit" | sed -n 's!^.*Commit/\(.*\)</id>!\1!p'`
+
+	echo "$NEWVER"
+}
+
+webvirtmgr_curver()
+{
+	# This gets the current version installed
+	cd "$INSTALLDIR"
+	CURVER=`git rev-parse HEAD`
+	cd /
+
+	echo "$CURVER"
+}
+
+webvirtmgr_storagesize() 
+{
+	# Get size of Install directory
+	if [ -d "$INSTALLDIR" ]; then
+		INSTSIZE=`du -shm "$INSTALLDIR" | cut -f1 | sed 's/[^0-9]*//g'`
+	elif [ -f "$INSTALLDIR" ]; then
+		INSTSIZE=`ls -lah --block-size=M "$INSTALLDIR" | awk '{ print $5}'`
+	else
+		INSTSIZE=0
+	fi
+
+	# Get size of Config directory
+	if [ -d "$CONFIGDIR" ]; then
+		DATSIZE=`du -shm "$CONFIGDIR" | cut -f1 | sed 's/[^0-9]*//g'`
+	elif [ -f "$CONFIGDIR" ]; then
+		DATSIZE=`ls -lah --block-size=M "$CONFIGDIR" | awk '{ print $5}'`
+	else
+		DATSIZE=0
+	fi
+
+	# Get size of Log directory
+	if [ ! -z "$LOGDIR" ]; then
+		if [ -d "$LOGDIR" ]; then
+			LOGSIZE=`du -shm "$LOGDIR" | cut -f1 | sed 's/[^0-9]*//g'`
+		elif [ -f "$LOGDIR" ]; then
+			LOGSIZE=`ls -lah --block-size=M "$LOGDIR" | awk '{ print $5}'`
+		else
+			LOGSIZE=0
+		fi
+	else
+		LOGSIZE=0
+	fi
+
+	# Get size of Cache directory
+	if [ ! -z "$CACHEDIR" ]; then
+		if [ -d "$CACHEDIR" ]; then
+			CACHSIZE=`du -shm "$CACHEDIR" | cut -f1 | sed 's/[^0-9]*//g'`
+		elif [ -f "$CACHEDIR" ]; then
+			CACHSIZE=`ls -lah --block-size=M "$CACHEDIR" | awk '{ print $5}'`
+		else
+			CACHSIZE=0
+		fi
+	else
+		CACHSIZE=0
+	fi
+
+	TOTALSIZE="$INSTSIZE"
+	LINE2=
+
+	# Add config directory if not part of install directory
+	if [ -e "$CONFIGDIR" ]; then
+		cd "$CONFIGDIR"
+		PWD=`pwd`
+		if ! [[ $PWD/  = $INSTALLDIR/* ]]; then
+			LINE2="$LINE2<li>Config Directory: $DATSIZE MB</li>"
+			TOTALSIZE=$(($TOTALSIZE + $DATSIZE))
+		fi
+	fi
+
+	# Add log directory if not part of install directory or config directory
+	if [ ! -z "$LOGDIR" ]; then
+		cd "$LOGDIR"
+		PWD=`pwd`
+		if ! [[ $PWD/ = $INSTALLDIR/* ]] && ! [[ $PWD/ = $CONFIGDIR/* ]]; then
+			LINE2="$LINE2<li>Log Directory: $LOGSIZE MB</li>"
+			TOTALSIZE=$(($TOTALSIZE + $LOGSIZE))
+		fi
+	fi
+
+	# Add cache directory if not part of install directory or config directory
+	if [ ! -z "$CACHEDIR" ]; then
+		cd "$CACHEDIR"
+		PWD=`pwd`
+		if ! [[ $PWD/ = $INSTALLDIR/* ]] && ! [[ $PWD/ = $CONFIGDIR/* ]]; then
+			LINE2="$LINE2<li>Cache Directory: $CACHSIZE MB</li>"
+			TOTALSIZE=$(($TOTALSIZE + $CACHSIZE))
+		fi
+	fi
+
+	# Create the HTML response - Add insatall directory
+	LINE="<p style="margin-left:10px\;margin-bottom:0px\;"><b>Total Storage Usage: $TOTALSIZE MB</b>"
+	LINE="$LINE<ul style="margin-top:0px\;"><li>Install Directory: $INSTSIZE MB</li>"
+	LINE="$LINE$LINE2"
+	LINE="$LINE</ul></p>"
+	echo "$LINE"
+}
+
+webvirtmgr_datacheck() 
+{
+	if [ -e "$CONFIGDIR" ]; then
+		fs=$( stat -f -c '%T' "$CONFIGDIR" )
+		if [ "$fs" == "ramfs" ] || [ "$fs" == "tempfs" ] || [ "$fs" == "proc" ] || [ "$fs" == "sysfs" ]; then
+			echo "<p style="color:red\;margin-left:10px\;margin-right:10px\;"><b>WARNING:</b> Your config directory is not persistent and WILL NOT survive a reboot. Please locate the directory on disk for persistency</p>"
+		elif [ "$fs" == "msdos" ]; then
+			echo "<p style="color:orange\;margin-left:10px\;margin-right:10px\;"><b>WARNING:</b> Your config directory is located on your flash drive. This will decrease your flash drives life span!</p>"
+		else
+			echo "<p style="color:green\;margin-left:10px\;margin-right:10px\;">Your config data will persist after a reboot</p>"
+		fi
+	else
+		echo "<p style="color:red\;margin-left:10px\;margin-right:10px\;"><b>WARNING:</b> Your config directory does not exist. You likely need to run the program once to create it.</p>"
+	fi
+	if [ ! -z "$LOGDIR" ] && [ -e "$LOGDIR" ]; then
+		fs=$( stat -f -c '%T' "$LOGDIR" )
+		if [ "$fs" == "ramfs" ] || [ "$fs" == "tempfs" ] || [ "$fs" == "proc" ] || [ "$fs" == "sysfs" ]; then
+			echo "<p style="color:red\;margin-left:10px\;margin-right:10px\;"><b>WARNING:</b> Your log directory is not persistent and WILL NOT survive a reboot. Please locate the directory on disk for persistency</p>"
+		elif [ "$fs" == "msdos" ]; then
+			echo "<p style="color:orange\;margin-left:10px\;margin-right:10px\;"><b>WARNING:</b> Your log directory is located on your flash drive. This will decrease your flash drives life span!</p>"
+		else
+			echo "<p style="color:green\;margin-left:10px\;margin-right:10px\;">Your log data will persist after a reboot</p>"
+		fi
+	else
+		if [ ! -z "$LOGDIR" ]; then
+			echo "<p style="color:red\;margin-left:10px\;margin-right:10px\;"><b>WARNING:</b> Your log directory does not exist. You likely need to run the program once to create it.</p>"
+		fi
+	fi
+	if [ ! -z "$CACHEDIR" ] && [ -e "$CACHEDIR" ]; then
+		fs=$( stat -f -c '%T' "$CACHEDIR" )
+		if [ "$fs" == "ramfs" ] || [ "$fs" == "tempfs" ] || [ "$fs" == "proc" ] || [ "$fs" == "sysfs" ]; then
+			echo "<p style="color:red\;margin-left:10px\;margin-right:10px\;"><b>WARNING:</b> Your cache directory is not persistent and WILL NOT survive a reboot. Please locate the directory on disk for persistency</p>"
+		elif [ "$fs" == "msdos" ]; then
+			echo "<p style="color:orange\;margin-left:10px\;margin-right:10px\;"><b>WARNING:</b> Your cache directory is located on your flash drive. This will decrease your flash drives life span!</p>"
+		else
+			echo "<p style="color:green\;margin-left:10px\;margin-right:10px\;">Your cache data will persist after a reboot</p>"
+		fi
+	else
+		if [ ! -z "$CACHEDIR" ]; then
+			echo "<p style="color:red\;margin-left:10px\;margin-right:10px\;"><b>WARNING:</b> Your cache directory does not exist. You likely need to run the program once to create it.</p>"
+		fi
+	fi
+}
+
+webvirtmgr_updateplg()
+{
+	# Check if running 32 bit or 64 bit OS and change plugin name accordingly
+	TYPE=$( /usr/bin/uname -m )
+	APPNAME="webvirtmgr"
+	if [ "x86_64" == "$TYPE" ]; then
+		APPNAME="$APPNAME.64bit.plg"
+	else
+		APPNAME="$APPNAME.plg"
+	fi
+
+	# Rename current plugin as .old
+	cd /boot/config/plugins
+	[ -f "$APPNAME.old" ] && rm -f "$APPNAME.old"
+	if [ -f "$APPNAME" ]; then
+		mv "$APPNAME" "$APPNAME.old"
+	fi
+
+	# Download latest plugin
+	echo "Updating plugin"
+	if [ "x86_64" == "$TYPE" ]; then
+		wget -q --no-check-certificate "https://github.com/dmacias72/webvirtmgr_unRAID_6
+/raw/master/$APPNAME"
+	else
+		wget -q --no-check-certificate "https://github.com/dmacias72/webvirtmgr_unRAID_6
+/raw/master/$APPNAME"
+	fi
+
+	# Install new plugin
+	/usr/local/sbin/installplg "/boot/config/plugins/$APPNAME"
+}
+
+webvirtmgr_downgradeplg()
+{
+	# Check if running 32 bit or 64 bit OS and change plugin name accordingly
+	TYPE=$( /usr/bin/uname -m )
+	APPNAME="webvirtmgr"
+	if [ "x86_64" == "$TYPE" ]; then
+		APPNAME="$APPNAME.64bit.plg"
+	else
+		APPNAME="$APPNAME.plg"
+	fi
+
+	# Remove current plugin and rename .old to current name
+	cd /boot/config/plugins
+	if [ -f "$APPNAME.old" ]; then
+		rm -f "$APPNAME"
+		mv "$APPNAME.old" "$APPNAME"
+		echo "Downgrading plugin"
+		/usr/local/sbin/installplg "/boot/config/plugins/$APPNAME"
+	fi
+}
+
+# read our configuration
+source /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+CONFIG="/boot/config/plugins/webvirtmgr/webvirtmgr.cfg"
+
+case "$1" in
+	'start')
+		webvirtmgr_start
+	;;
+	'stop')
+		webvirtmgr_stop
+	;;
+	'restart')
+		webvirtmgr_restart
+	;;
+	'enable')
+		webvirtmgr_enable $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12} ${13}
+	;;
+	'disable')
+		webvirtmgr_disable $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12} ${13}
+	;;
+	'install')
+		webvirtmgr_install
+	;;
+	'update')
+		webvirtmgr_update $2
+	;;
+	'storagesize')
+		webvirtmgr_storagesize
+	;;
+	'datacheck')
+		webvirtmgr_datacheck
+	;;
+	'buttonstart')
+		webvirtmgr_buttonstart
+	;;
+	'updateplg')
+		webvirtmgr_updateplg
+	;;
+	'downgradeplg')
+		webvirtmgr_downgradeplg
+	;;
+	'latestversion')
+		webvirtmgr_newver
+	;;
+	'currentversion')
+		webvirtmgr_curver
+	;;
+	*)
+	echo "usage $0 start|stop|restart|enable|disable|install|update|storagesize|datacheck|updateplg|downgradeplg|latestversion|currentversion"
+esac
+]]>
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/webvirtmgr/webvirtmgr.page">
+<INLINE>
+<![CDATA[
+Menu="NetworkServices"
+Icon="webvirtmgr.png"
+Version="1.0"
+Author="Derek Macias"
+Type="php"
+Title="KVM Manager"
+]]>
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/webvirtmgr/webvirtmgr.png">
+<LOCAL>/boot/config/plugins/webvirtmgr/webvirtmgr.png</LOCAL>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/webvirtmgr/device_status.png">
+<LOCAL>/boot/config/plugins/images/device_status.png</LOCAL>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/webvirtmgr/new_config.png">
+<LOCAL>/boot/config/plugins/images/new_config.png</LOCAL>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/webvirtmgr/information.png">
+<LOCAL>/boot/config/plugins/images/information.png</LOCAL>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/webvirtmgr/webvirtmgr.css">
+<INLINE>
+<![CDATA[
+<style type="text/css">
+#updatebutton {
+border-collapse: separate;
+	-moz-box-shadow:inset 0px 1px 0px 0px #dcecfb;
+	-webkit-box-shadow:inset 0px 1px 0px 0px #dcecfb;
+	box-shadow:inset 0px 1px 0px 0px #dcecfb;
+	background-color:#bddbfa;
+	background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#bddbfa), to(#80b5ea));
+	background-image: -moz-linear-gradient(#bddbfa, #80b5ea);
+	background-image: -o-linear-gradient(#bddbfa, #80b5ea);
+	background-image: linear-gradient(#bddbfa, #80b5ea);
+	filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#bddbfa', endColorstr='#80b5ea');
+	ms-filter: "progid:DXImageTransform.Microsoft.Gradient(GradientType=0,StartColorStr=#bddbfa,EndColorStr=#80b5ea)";
+	text-indent:0;
+	border:1px solid #84bbf3;
+	display:inline-block;
+	color:#ffffff;
+	font-family:Arial;
+	font-size:15px;
+	font-weight:bold;
+	font-style:normal;
+	text-align:center;
+	text-shadow:1px 1px 0px #528ecc;
+	-webkit-transition: all 300ms ease-in;
+	-moz-transition: all 300ms ease-in;
+	-o-transition: all 300ms ease-in;
+	-ms-transition: all 300ms ease-in;
+	transition: all 300ms ease-in;
+}
+#updatebutton:hover {
+	border:1px solid #4fa1f4;
+	-moz-box-shadow:inset 0px 0px 8px 4px #67aef6;
+	-webkit-box-shadow:inset 0px 0px 8px 4px #67aef6;
+	box-shadow:inset 0px 0px 8px 4px #67aef6;
+	-webkit-transition: all 300ms ease-out;
+	-moz-transition: all 300ms ease-out;
+	-o-transition: all 300ms ease-out;
+	-ms-transition: all 300ms ease-out;
+	transition: all 300ms ease-out;
+}
+#updatebutton:active {
+	border:1px solid #4fa1f4;
+	-moz-box-shadow:inset 0px 0px 8px 4px #67aef6;
+	-webkit-box-shadow:inset 0px 0px 8px 4px #67aef6;
+	box-shadow:inset 0px 0px 8px 4px #67aef6;
+	position:relative;
+	top:1px;
+	left:1px;
+}
+#title {
+	margin-top: 15px;
+	margin-bottom: 20px;
+	height: 35px;
+	line-height: 35px;
+	-webkit-border-top-left-radius: 5px;
+	-webkit-border-top-right-radius: 5px;
+	-webkit-border-bottom-left-radius: 0;
+	-webkit-border-bottom-right-radius: 0;
+	-moz-border-radius-topleft: 5px;
+	-moz-border-radius-topright: 5px;
+	-moz-border-radius-bottomleft: 0;
+	-moz-border-radius-bottomright: 0;
+	border-top-left-radius: 5px;
+	border-top-right-radius: 5px;
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
+	border: 1px solid #e9e9e9;
+	border-bottom: 1px solid #DDDDDD;
+	background: #e6e6e6;
+	background: -moz-linear-gradient(top, #F3F3F3 0%, #EEEEEE 100%);
+	background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#F3F3F3), color-stop(100%,#EEEEEE));
+	filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#F3F3F3', endColorstr='#EEEEEE', GradientType=0 );
+	color: #333333;
+	clear: both;
+}
+#title a, a:hover {
+	color: #333333;
+}
+#title span.left {
+	font-size: 15px;
+	padding-left: 10px;
+	float: left;
+	text-shadow: 0 1px 1px #FFFFFF;
+}
+#title span.right {
+	font-size: 10px;
+	font-weight: normal;
+	padding-right: 10px;
+	float: right;
+}
+.green {
+	color: #6fa239;
+	padding-left: 5px;
+	padding-right: 5px;
+}
+.red {
+	color: #cc0000;
+	padding-left: 5px;
+	padding-right: 5px;
+}
+</style>
+]]>
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/webvirtmgr/webvirtmgr.php">
+<INLINE>
+<![CDATA[
+<?php include '/usr/local/emhttp/plugins/webvirtmgr/webvirtmgr.css';?>
+<?PHP
+# -------------------------------------------------------------------------
+## Load current config file and check if program is installed already
+# -------------------------------------------------------------------------
+
+#check if there is internet conneciton to page doesn't stall out
+$connected = @fsockopen("www.google.com", 80, $errno, $errstr, 5);
+if ($connected){
+	$is_conn = "true";
+	fclose($connected);
+} else {
+	$is_conn = "false";
+}
+
+# This will clean any ^M characters caused by windows from the config file before use
+if (file_exists("/boot/config/plugins/webvirtmgr/webvirtmgr.cfg"))
+	shell_exec("sed -i 's!\r!!g' '/boot/config/plugins/webvirtmgr/webvirtmgr.cfg'");
+
+$webvirtmgr_cfg = parse_ini_file( "/boot/config/plugins/webvirtmgr/webvirtmgr.cfg" );
+$webvirtmgr_installed = file_exists( $webvirtmgr_cfg["INSTALLDIR"] . "/manage.py" ) ? "yes" : "no";
+$machine_type = trim(shell_exec( "uname -m" ));
+if ($machine_type == "x86_64")
+	$app_name = "webvirtmgr.64bit.plg";
+else
+	$app_name = "webvirtmgr.plg";
+$webvirtmgr_rollback = file_exists( "boot/config/plugins/" . $app_name . ".old" ) ? "yes" : "no";
+
+# -------------------------------------------------------------------------
+## Collect local variables from config files and verify data as best as possible
+# -------------------------------------------------------------------------
+
+# Plugin Current Version Variable
+$webvirtmgr_plgver = trim(shell_exec ( "cat /boot/config/plugins/webvirtmgr/plgver.txt" )); 
+
+# Get latest release of the plugin
+if ($is_conn == "true") {
+	$REPO2="https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6
+/master/versions";
+	$webvirtmgr_newversionPLG = trim(shell_exec ( "wget -qO- --no-check-certificate $REPO2 | sed -n 's/webvirtmgr: \(.*\)/\\1/p'" ));
+} else {
+	$webvirtmgr_newversionPLG = "";
+}
+
+# Service Status Variable
+if (isset($webvirtmgr_cfg['SERVICE']) && ($webvirtmgr_cfg['SERVICE'] == "enable" || $webvirtmgr_cfg['SERVICE'] == "disable"))
+	$webvirtmgr_service = $webvirtmgr_cfg['SERVICE'];
+else
+	$webvirtmgr_service = "disable";
+
+# Install Directory Variable
+if (isset($webvirtmgr_cfg['INSTALLDIR']))
+	$webvirtmgr_installdir = $webvirtmgr_cfg['INSTALLDIR'];
+else
+	$webvirtmgr_installdir = "/usr/local/webvirtmgr";
+
+# Config Directory Variable
+if (isset($webvirtmgr_cfg['CONFIGDIR'])) {
+	$webvirtmgr_configdir = $webvirtmgr_cfg['CONFIGDIR'];
+} else {
+	$webvirtmgr_configdir = $webvirtmgr_installdir . "/config";
+}
+
+# Custom Logs Directory
+if (file_exists($webvirtmgr_configdir . "/config.ini") && shell_exec("grep -m 1 '^log_dir =' " . $webvirtmgr_configdir . "/config.ini")) {
+	$webvirtmgr_logsdir = trim(shell_exec( "sed -n 's!log_dir = \(.*\)!\\1!p' " . $webvirtmgr_configdir . "/config.ini" ));
+	if ($webvirtmgr_logsdir == "logs")
+		$webvirtmgr_logsdir = "";
+} else if (isset($webvirtmgr_cfg['LOGDIR'])) {
+	$webvirtmgr_logsdir = $webvirtmgr_cfg['LOGDIR'];
+} else {
+	$webvirtmgr_logsdir = "";
+}
+
+# Custom Cache Directory
+if (file_exists($webvirtmgr_configdir . "/config.ini") && shell_exec("grep -m 1 '^cache_dir =' " . $webvirtmgr_configdir . "/config.ini")) {
+	$webvirtmgr_cachedir = trim(shell_exec( "sed -n 's!cache_dir = \(.*\)!\\1!p' " . $webvirtmgr_configdir . "/config.ini" ));
+	if ($webvirtmgr_cachedir == "cache")
+		$webvirtmgr_cachedir = "";
+} else if (isset($webvirtmgr_cfg['CACHEDIR'])) {
+	$webvirtmgr_cachedir = $webvirtmgr_cfg['CACHEDIR'];
+} else {
+	$webvirtmgr_cachedir = "";
+}
+
+# Use SSL Variable
+if (file_exists($webvirtmgr_configdir . "/config.ini") && shell_exec("grep -m 1 '^enable_https =' " . $webvirtmgr_configdir . "/config.ini")) {
+	$webvirtmgr_usessl = trim(shell_exec( "sed -n 's!enable_https = \([0-9]\)!\\1!p' " . $webvirtmgr_configdir . "/config.ini" ));
+	if ($webvirtmgr_usessl == "1")
+		$webvirtmgr_usessl = "yes";
+	else
+		$webvirtmgr_usessl = "no";
+} else if (isset($webvirtmgr_cfg['USESSL']) && ($webvirtmgr_cfg['USESSL'] == "yes" || $webvirtmgr_cfg['USESSL'] == "no")) {
+	$webvirtmgr_usessl = $webvirtmgr_cfg['USESSL'];
+} else {
+	$webvirtmgr_usessl = "no";
+}
+
+# Port Number Variable
+if (file_exists($webvirtmgr_configdir . "/config.ini") && shell_exec("grep -m 1 '^http_port =' " . $webvirtmgr_configdir . "/config.ini")) {
+	$webvirtmgr_port = trim(shell_exec( "grep -m 1 '^http_port =' " . $webvirtmgr_configdir . "/config.ini | sed -n 's!http_port = \([0-9][0-9]*\)!\\1!p'" ));
+	if (is_numeric($webvirtmgr_port)) {
+		if ($webvirtmgr_port < 0 || $webvirtmgr_port > 65535)
+			$webvirtmgr_port = "8000";
+	} else {
+		$webvirtmgr_port = "8000";
+	}
+} else if (isset($webvirtmgr_cfg['PORT']) && is_numeric($webvirtmgr_cfg['PORT'])) {
+	$webvirtmgr_port = $webvirtmgr_cfg['PORT'];
+	if ($webvirtmgr_port < 0 || $webvirtmgr_port > 65535)
+		$webvirtmgr_port = "8000";
+} else {
+	$webvirtmgr_port = "8000";
+}
+
+# URL Base Variable
+if (file_exists($webvirtmgr_configdir . "/config.ini") && shell_exec("grep -m 1 '^http_root =' " . $webvirtmgr_configdir . "/config.ini")) {
+	$webvirtmgr_urlbase = trim(shell_exec( "sed -n 's!http_root = /\(.*\)!\\1!p' " . $webvirtmgr_configdir . "/config.ini" ));
+} else if (isset($webvirtmgr_cfg['URLBASE'])) {
+	$webvirtmgr_urlbase = $webvirtmgr_cfg['URLBASE'];
+} else {
+	$webvirtmgr_urlbase = "";
+}
+
+# Run As User Variable
+if (isset($webvirtmgr_cfg['RUNAS']))
+	$webvirtmgr_runas = $webvirtmgr_cfg['RUNAS'];
+else
+	$webvirtmgr_runas = "nobody";
+
+# Repo Variable
+if (isset($webvirtmgr_cfg['REPO']))
+	$webvirtmgr_repo = $webvirtmgr_cfg['REPO'];
+else
+	$webvirtmgr_repo = "https://github.com/retspen/webvirtmgr";
+
+# Get a list of branches for this repo
+$get_branches = trim(shell_exec("git ls-remote --heads " . $webvirtmgr_repo . "| sed -n 's!.*refs/heads/\(.*\)!\\1!p'"));
+$webvirtmgr_brancharray = explode ("\n", $get_branches);
+
+# Branch Variable - Get stored value from config file
+if (isset($webvirtmgr_cfg['BRANCH']))
+	$webvirtmgr_branch = $webvirtmgr_cfg['BRANCH'];
+else
+	$webvirtmgr_branch = "master";
+
+# Check if branch from config exists in this repo (not case sensitive)
+$checkbranchmatch = "0";
+foreach ($webvirtmgr_brancharray as $thevalue) {
+	if (strtolower($thevalue) == strtolower($webvirtmgr_branch)) {
+		$checkbranchmatch = "1";
+		$webvirtmgr_branch = $thevalue;
+	}
+}
+
+# See if branch match existed, otherwise set to master (if it exists) or just first one found if no master exists)
+if ($checkbranchmatch == "0") {
+	$checkmasterbranch = "0";
+	foreach ($webvirtmgr_brancharray as $thevalue2) {
+		if (strtolower($thevalue2) == "master") {
+			$checkmasterbranch = "1";
+			$webvirtmgr_branch = $thevalue2;
+		}
+	}
+	if ($checkmasterbranch == "0")
+		$webvirtmgr_branch = $webvirtmgr_brancharray[0];
+}
+
+# Storage Check Status Variable
+if (isset($webvirtmgr_cfg['PLG_STORAGESIZE']) && ($webvirtmgr_cfg['PLG_STORAGESIZE'] == "yes" || $webvirtmgr_cfg['PLG_STORAGESIZE'] == "no"))
+	$webvirtmgr_storagesizestat = $webvirtmgr_cfg['PLG_STORAGESIZE'];
+else
+	$webvirtmgr_storagesizestat = "yes";
+
+# Data Check Status Variable
+if (isset($webvirtmgr_cfg['PLG_DATACHECK']) && ($webvirtmgr_cfg['PLG_DATACHECK'] == "yes" || $webvirtmgr_cfg['PLG_DATACHECK'] == "no"))
+	$webvirtmgr_datacheckstat = $webvirtmgr_cfg['PLG_DATACHECK'];
+else
+	$webvirtmgr_datacheckstat = "yes";
+
+# -------------------------------------------------------------------------
+## Check is program is installed and running to get extra information
+# -------------------------------------------------------------------------
+if ($webvirtmgr_installed=="yes") {
+	$webvirtmgr_pids = shell_exec ("pgrep -f manage.py" );
+	if ($webvirtmgr_pids == "")
+		$webvirtmgr_running = "no";
+	else
+		$webvirtmgr_running = "yes";
+	if ($webvirtmgr_running == "yes")
+		$webvirtmgr_updatestatus = "Running";
+	else
+		$webvirtmgr_updatestatus = "Stopped";
+
+	if ($webvirtmgr_storagesizestat == "yes")
+		$webvirtmgr_storagesize = shell_exec ( "/etc/rc.d/rc.webvirtmgr storagesize" );
+	if ($webvirtmgr_datacheckstat == "yes")
+		$webvirtmgr_datacheck = shell_exec ( "/etc/rc.d/rc.webvirtmgr datacheck" );
+
+	# Get current installed version of the program
+	$webvirtmgr_curversion = trim(shell_exec( "/etc/rc.d/rc.webvirtmgr currentversion" ));
+	if ($webvirtmgr_curversion == "")
+		$webvirtmgr_curversion = "couldn't determine the WebVirtMgr version"; 
+
+	# Get latest release version of the program
+	if ($is_conn == "true") {
+		$webvirtmgr_newversion = trim(shell_exec ( "/etc/rc.d/rc.webvirtmgr latestversion" ));
+	} else {
+		$webvirtmgr_newversion = "";
+	}
+
+
+	if ($webvirtmgr_newversion != "" && $webvirtmgr_newversion != $webvirtmgr_curversion)
+		$webvirtmgr_canupdate = "yes";
+	else	
+		$webvirtmgr_canupdate = "no";
+}
+
+# Get plugin version current and new
+if ($webvirtmgr_newversionPLG != "" && $webvirtmgr_newversionPLG != $webvirtmgr_plgver )
+	$webvirtmgr_canupdatePLG = "yes";
+else	
+	$webvirtmgr_canupdatePLG = "no";
+?>
+
+<div style="width: 49%; float:left">
+	<div id="title">
+		<span class="left">Status:&#32;<img src='/plugins/webvirtmgr/device_status.png'>
+			<?if ($webvirtmgr_installed=="yes"):?>
+				<?if ($webvirtmgr_running=="yes"):?>
+					<?if ($webvirtmgr_usessl=="yes"):?>
+						<a href="https://<?=$var['NAME'];?>:<?=$webvirtmgr_port;?>/<?=$webvirtmgr_urlbase;?>" target="_blank">
+							<span class="green"><b>RUNNING</b></span>
+						</a>
+					<?else:?>
+						<a href="http://<?=$var['NAME'];?>:<?=$webvirtmgr_port;?>/<?=$webvirtmgr_urlbase;?>" target="_blank">
+							<span class="green"><b>RUNNING</b></span>
+						</a>
+					<?endif;?>
+					<span style="font-size:12px;"> with version: <b><?=$webvirtmgr_curversion?></b></span>
+				<?else:?>
+					<span class="red"><b>STOPPED</b></span>
+				<?endif;?>
+			<?else:?>
+				<span class="red"><b>NOT INSTALLED</b></span>
+			<?endif;?>  
+		</span>
+	</div>  
+	<?if ($webvirtmgr_installed=="yes"):?>
+		<?if ($webvirtmgr_running=="yes"):?>
+			<div style="position:relative;float:left;width:50%;text-align:right; margin-bottom:24px">
+				<form name="webvirtmgr_start_stop" method="POST" action="/update.htm" target="progressFrame">
+					<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr stop">
+					<input type="submit" name="runCmd" value="Stop">
+				</form>
+			</div>
+			<div style="position:relative;float:left;width:50%;margin-bottom:24px">
+				<form name="webvirtmgr_restart" method="POST" action="/update.htm" target="progressFrame">
+					<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr restart">
+					<input type="submit" name="runCmd" value="Restart">
+				</form>
+			</div>
+		<?else:?>
+			<div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
+				<form name="webvirtmgr_start" method="POST" action="/update.htm" target="progressFrame">
+					<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr buttonstart">
+					<input type="submit" name="runCmd" value="Start">
+				</form>
+			</div>
+		<?endif;?>
+		<?if ($webvirtmgr_canupdate=="yes"):?>
+			<div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
+				<form name="webvirtmgr_updateapp" method="POST" action="/update.htm" target="progressFrame">
+					<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr update <?=$webvirtmgr_updatestatus?>">
+					<input id="updatebutton" type="submit" name="runCmd" value="Update WebVirtMgr">
+				</form><br>
+				<?echo "Installed Version: $webvirtmgr_curversion";?>&emsp;<br>
+				<b><?echo "Update to Version: $webvirtmgr_newversion";?>&emsp;</b>
+			</div>
+		<?endif;?>
+	<?else:?>
+		<div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
+			<form name="webvirtmgr_install" method="POST" action="/update.htm" target="progressFrame">
+				<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr install">          
+				<input type="submit" name="runCmd" value="Install">
+			</form>
+		</div>
+	<?endif;?>
+	<div id="title">
+		<span class="left">Information:&#32;<img src='/plugins/webvirtmgr/information.png'></span>
+	</div>
+	<? if ($webvirtmgr_installed=="yes"): ?>  
+		<? if ($webvirtmgr_storagesizestat == "yes"): ?>
+			<?=$webvirtmgr_storagesize?>
+		<? endif; ?>
+		<? if ($webvirtmgr_datacheckstat == "yes"): ?>
+			<?=$webvirtmgr_datacheck?>
+		<? endif; ?>
+	<? endif; ?>
+	<? if ($is_conn == "false"):?>
+		<p style="color:red;margin-left:10px;"><b>No Internet Connection Detected</b></p>
+	<? endif; ?>
+	<p style="margin-left:10px;"><b>Plugin Version: <?=$webvirtmgr_plgver;?></b></p>
+	<? if ($webvirtmgr_rollback=="yes"):?>
+		<div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
+			<form name="webvirtmgr_downgrade" method="POST" action="/update.htm" target="progressFrame">
+				<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr downgradeplg">
+				<input type="submit" name="runCmd" value="Downgrade Plugin">
+			</form>
+		</div>
+	<?endif;?>
+	<?if ($webvirtmgr_canupdatePLG=="yes"):?>
+		<div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
+			<form name="webvirtmgr_update1" method="POST" action="/update.htm" target="progressFrame">
+				<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr updateplg">
+				<input id="updatebutton" type="submit" name="runCmd" value="Update Plugin">
+			</form><br>
+			<b><?echo "Update Plugin to Version: $webvirtmgr_newversionPLG";?>&emsp;</b>
+		</div>
+	<?endif;?>
+</div>
+<div style="width: 49%; float:right">
+	<div id="title">
+		<span class="left">Configuration:&#32;<img src='/plugins/webvirtmgr/new_config.png'></span>
+	</div>
+	<form name="webvirtmgr_settings" method="POST" action="/update.htm" target="progressFrame">
+		<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr">
+		<table class="settings">
+			<tr>
+				<td>Enable WebVirtMgr:</td>
+				<td>
+					<select name="arg1" size="1">
+						<?=mk_option($webvirtmgr_service, "disable", "No");?>
+						<?=mk_option($webvirtmgr_service, "enable", "Yes");?>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<td>Install directory:</td>
+				<td><input type="text" name="arg2" maxlength="60" value="<?=$webvirtmgr_installdir;?>"></td>
+			</tr>
+			<tr>
+				<td>Config directory:</td>
+				<td><input type="checkbox" name="use_data" <?=($webvirtmgr_configdir != $webvirtmgr_installdir . '/config')?"checked=\"checked\"":"";?> onChange="checkDATADIR(this.form);"> 
+				<input type="text" name="arg3" style="width:86%" maxlength="60" value="<?=$webvirtmgr_configdir;?>"></td>
+			</tr>
+			<tr>
+				<td>Custom Logs directory:</td>
+				<td><input type="checkbox" name="use_logs" <?=(($webvirtmgr_logsdir != $webvirtmgr_configdir . '/logs') && ($webvirtmgr_logsdir != "") && ($webvirtmgr_logsdir != "logs"))?"checked=\"checked\"":"";?> onChange="checkLOGDIR(this.form);"> 
+				<input type="text" name="arg4" style="width:86%" maxlength="60" value="<?=$webvirtmgr_logsdir;?>"></td>
+			</tr>
+			<tr>
+				<td>Custom Cache directory:</td>
+				<td><input type="checkbox" name="use_cache" <?=(($webvirtmgr_cachedir != $webvirtmgr_configdir . '/cache') && ($webvirtmgr_cachedir != "") && ($webvirtmgr_cachedir != "cache"))?"checked=\"checked\"":"";?> onChange="checkCACHEDIR(this.form);"> 
+				<input type="text" name="arg5" style="width:86%" maxlength="60" value="<?=$webvirtmgr_cachedir;?>"></td>
+			</tr>
+			<tr>
+				<td>Use SSL:</td>
+				<td>
+					<input type="checkbox" name="use_ssl" <?=($webvirtmgr_usessl=="yes")?"checked=\"checked\"":"";?> onChange="checkSSLPORT(this.form);">
+					<input type="hidden" name="arg6" value="<?=$webvirtmgr_usessl;?>">
+				</td>
+			</tr> 
+			<tr>
+				<td>Port:</td>
+				<td><input type="text" name="arg7" maxlength="40" value="<?=$webvirtmgr_port;?>"></td>
+			</tr>
+			<tr>
+				<td>URL Base:</td>
+				<td><input type="text" name="arg8" maxlength="60" value="<?=$webvirtmgr_urlbase;?>"></td>
+			</tr> 
+			<tr>
+				<td>Run as user:</td>
+				<td>
+					<select name="runas" size="1" onChange="checkUSER(this.form);">
+						<?=mk_option($webvirtmgr_runas, "nobody", "nobody");?>
+						<?=mk_option($webvirtmgr_runas, "root", "root");?>
+						<option value='other' <?=($webvirtmgr_runas != "root" && $webvirtmgr_runas != "nobody") ? "selected=yes":"";?>>other</option>
+					</select>
+					<input type="hidden" name="arg9" style="width:66%" maxlength="40" value="<?=$webvirtmgr_runas;?>">
+				</td>
+			</tr>
+			<tr><td colspan="2"><div style="background-color:#FFFFFF;border:1px solid #000000;height:1px;width:100%;font-size:8px;"> </div></td></tr>
+			<tr>
+				<td>Repo:</td>
+				<td>
+					<select name="repo" size="1" onChange="checkREPO(this.form);">
+						<?=mk_option($webvirtmgr_repo, "https://github.com/retspen/webvirtmgr", "Default");?>
+						<option value='other'<?=($webvirtmgr_repo != "https://github.com/retspen/webvirtmgr")?" selected=yes":"" ;?>>Custom</option>
+					</select>
+					<img src="/plugins/webvirtmgr/information.png" title="Custom repos may not be compatible with this plugin. Use this option at your own risk!"/>
+				</td>
+			</tr>
+			<tr id="custom_repo">
+				<td>Custom Repo URL:</td>
+				<td><input type="hidden" name="arg10" maxlength="60" value="<?=$webvirtmgr_repo;?>"></td>
+			</tr>
+			<tr id="repo_warning" style="display:none;">
+				<td colspan="2"><center><p style="color:red;">WARNING: Changing the repo will delete your current install files and config/database files due to possible incompatibilities between the applications.
+					<br><br><i>Backup your current install and config folders if you plan on reverting back to them in the future.</i></p></center></td>
+				
+			</tr>
+			<tr>
+				<td>Branch:</td>
+				<td>
+					<select name="branch" size="1" onChange="checkBRANCH(this.form);">
+						<?foreach ($webvirtmgr_brancharray as $value):?>
+							<?=mk_option($webvirtmgr_branch, $value, ucwords($value));?>
+						<?endforeach;?>
+					</select>
+					<input type="hidden" name="arg11" value="<?=$webvirtmgr_branch;?>">
+				</td>
+			</tr> 
+			<tr>
+				<td>Show storage memory usage:</td>
+				<td>
+					<select name="storagesize" size="1" onChange="checkSTORAGE(this.form);">
+						<?=mk_option($webvirtmgr_storagesizestat, "yes", "Yes");?>
+						<?=mk_option($webvirtmgr_storagesizestat, "no", "No");?>
+					</select>
+					<input type="hidden" name="arg12" value="<?=$webvirtmgr_storagesizestat;?>">
+				</td>
+			</tr>
+			<tr>
+				<td>Show data persistency information:</td>
+				<td>
+					<select name="datacheck" size="1" onChange="checkDATAPERSIST(this.form);">
+						<?=mk_option($webvirtmgr_datacheckstat, "yes", "Yes");?>
+						<?=mk_option($webvirtmgr_datacheckstat, "no", "No");?>
+					</select>
+					<input type="hidden" name="arg13" value="<?=$webvirtmgr_datacheckstat;?>">
+				</td>
+			</tr>
+		</table>
+		<div align="center">
+			<input type="submit" name="runCmd" value="Apply" style="margin-bottom:8px" onClick="verifyDATA(this.form);">
+			<button type="button" style="margin-bottom:35px" onClick="done();">Done</button>
+		</div>
+	</form>
+	<br />
+</div>
+
+<script type="text/javascript">
+function checkRUNNING(form)
+{
+	if ("<?=$webvirtmgr_running;?>" == "yes")
+	{
+		form.arg2.readOnly = true;
+		form.arg3.readOnly = true;
+		form.arg4.readOnly = true;
+		form.arg5.readOnly = true;
+		form.arg6.readOnly = true;
+		form.arg7.readOnly = true;
+		form.arg8.readOnly = true;
+		form.arg9.readOnly = true;
+		form.arg10.readOnly = true;
+		form.arg11.readOnly = true;
+		form.arg12.readOnly = true;
+		form.arg13.readOnly = true;
+		form.runas.disabled = true;
+		form.branch.disabled = true;
+		form.use_ssl.disabled = true;
+		form.use_data.disabled = true;
+		form.use_logs.disabled = true;
+		form.use_cache.disabled = true;
+		form.storagesize.disabled = true;
+		form.datacheck.disabled = true;
+   } 
+   else
+   {
+		form.arg2.readOnly = (form.arg1.value == "enable");
+		form.arg3.readOnly = (form.arg1.value == "enable");
+		form.arg4.readOnly = (form.arg1.value == "enable");
+		form.arg5.readOnly = (form.arg1.value == "enable");
+		form.arg6.readOnly = (form.arg1.value == "enable");
+		form.arg7.readOnly = (form.arg1.value == "enable");
+		form.arg8.readOnly = (form.arg1.value == "enable");
+		form.arg9.readOnly = (form.arg1.value == "enable");
+		form.arg10.readOnly = (form.arg1.value == "enable");
+		form.arg11.readOnly = (form.arg1.value == "enable");
+		form.arg12.readOnly = (form.arg1.value == "enable");
+		form.arg13.readOnly = (form.arg1.value == "enable");
+		form.runas.disabled = (form.arg1.value == "enable");
+		form.repo.disabled = (form.arg1.value == "enable");
+		form.branch.disabled = (form.arg1.value == "enable");
+		form.use_ssl.disabled = (form.arg1.value == "enable");
+		form.use_data.disabled = (form.arg1.value == "enable");
+		form.use_logs.disabled = (form.arg1.value == "enable");
+		form.use_cache.disabled = (form.arg1.value == "enable");
+		form.storagesize.disabled = (form.arg1.value == "enable");
+		form.datacheck.disabled = (form.arg1.value == "enable");
+   }
+}
+ 
+function checkUSER(form)
+{
+	if (form.runas.selectedIndex < 2 ) {
+		form.arg9.value = form.runas.options[form.runas.selectedIndex].value;
+		form.arg9.type = "hidden";
+	} else {
+		form.arg9.value = "<?=$webvirtmgr_runas;?>";
+		form.arg9.type = "text";
+	}
+}
+
+function checkDATADIR(form)
+{
+	if (form.use_data.checked == false )
+	{
+		form.arg3.value = form.arg2.value + "/config";
+		form.arg3.type = "hidden";
+	} else {
+		form.arg3.value = "<?=$webvirtmgr_configdir;?>";
+		form.arg3.type = "text";
+	}
+}
+
+function checkLOGDIR(form)
+{
+	if (form.use_logs.checked == false )
+	{
+		form.arg4.value = "";
+		form.arg4.type = "hidden";
+	} else {
+		form.arg4.value = "<?=$webvirtmgr_logsdir;?>";
+		form.arg4.type = "text";
+	}
+}
+
+function checkCACHEDIR(form)
+{
+	if (form.use_cache.checked == false )
+	{
+		form.arg5.value = "";
+		form.arg5.type = "hidden";
+	} else {
+		form.arg5.value = "<?=$webvirtmgr_cachedir;?>";
+		form.arg5.type = "text";
+	}
+}
+
+function checkSSLPORT(form) {
+	if (form.use_ssl.checked == false ) {
+		form.arg6.value = "no";
+	} else {
+		form.arg6.value = "yes";
+	}
+}
+
+var currentindex = document.webvirtmgr_settings.repo.selectedIndex;
+function checkREPO(form) {
+	if (form.repo.selectedIndex < 1 ) {
+		form.arg10.value = form.repo.options[form.repo.selectedIndex].value;
+		form.arg10.type = "hidden";
+		document.getElementById("custom_repo").style.display = "none";
+	} else {
+		form.arg10.value = "<?=$webvirtmgr_repo;?>";
+		form.arg10.type = "text";
+		document.getElementById("custom_repo").style.display = "";
+	}
+
+	if (form.repo.selectedIndex == currentindex ) {
+		document.getElementById("repo_warning").style.display = "none";
+	} else {
+		document.getElementById("repo_warning").style.display = "";
+	}
+}
+
+function checkBRANCH(form)
+{
+	form.arg11.value = form.branch.options[form.branch.selectedIndex].value;
+}
+
+function checkSTORAGE(form)
+{
+	form.arg12.value = form.storagesize.options[form.storagesize.selectedIndex].value;
+}
+
+function checkDATAPERSIST(form)
+{
+	form.arg13.value = form.datacheck.options[form.datacheck.selectedIndex].value;
+}
+
+function verifyDATA(form)
+{
+	if (form.arg2.value == null || !(/\S/.test(form.arg2.value))){
+		form.arg2.value = "/usr/local/webvirtmgr";
+	}
+	if (form.arg3.value == null || !(/\S/.test(form.arg3.value))){
+		form.arg3.value = form.arg2.value + "/config";
+	}
+	if (form.arg4.value == null || !(/\S/.test(form.arg4.value))){
+		form.arg4.value = "!";
+	}
+	if (form.arg5.value == null || !(/\S/.test(form.arg5.value))){
+		form.arg5.value = "!";
+	}
+	if (form.arg6.value != "yes" && form.arg6.value != "no") {
+		form.arg6.value = "no";
+	}
+	if (isNumber(form.arg7.value)){
+		if (form.arg7.value < 0 || form.arg7.value > 65535){
+			form.arg7.value = "8181";
+		}
+	} else {
+		form.arg7.value = "8181";
+	}
+	if (!(/\S/.test(form.arg8.value))){
+		form.arg8.value = "!";
+	}
+	if (form.arg9.value == ""){
+		form.arg9.value = "nobody";
+	}
+	if (form.arg10.value == null || !(/\S/.test(form.arg10.value))) {
+		form.arg10.value = "https://github.com/retspen/webvirtmgr";
+	}
+	if (form.arg11.value == null || !(/\S/.test(form.arg11.value))) {
+		form.arg11.value = "master";
+	}
+	if (form.arg12.value != "yes" && form.arg12.value != "no"){
+		form.arg12.value = "yes";
+	}
+	if (form.arg13.value != "yes" && form.arg13.value != "no"){
+		form.arg13.value = "yes";
+	}
+
+	form.arg1.value = form.arg1.value.replace(/ /g,"_");
+	form.arg2.value = form.arg2.value.replace(/ /g,"_");
+	form.arg3.value = form.arg3.value.replace(/ /g,"_");
+	form.arg4.value = form.arg4.value.replace(/ /g,"_");
+	form.arg5.value = form.arg5.value.replace(/ /g,"_");
+	form.arg6.value = form.arg6.value.replace(/ /g,"_");
+	form.arg7.value = form.arg7.value.replace(/ /g,"_");
+	form.arg8.value = form.arg8.value.replace(/ /g,"_");
+	form.arg9.value = form.arg9.value.replace(/ /g,"_");
+	form.arg10.value = form.arg10.value.replace(/ /g,"_");
+	form.arg11.value = form.arg11.value.replace(/ /g,"_");
+	form.arg12.value = form.arg12.value.replace(/ /g,"_");
+	form.arg13.value = form.arg13.value.replace(/ /g,"_");
+}
+
+function isNumber(n) {
+	return !isNaN(parseFloat(n)) && isFinite(n);
+}
+
+checkUSER(document.webvirtmgr_settings);
+checkREPO(document.webvirtmgr_settings);
+checkBRANCH(document.webvirtmgr_settings);
+checkDATADIR(document.webvirtmgr_settings);
+checkLOGDIR(document.webvirtmgr_settings);
+checkCACHEDIR(document.webvirtmgr_settings);
+checkSSLPORT(document.webvirtmgr_settings);
+checkSTORAGE(document.webvirtmgr_settings);
+checkDATAPERSIST(document.webvirtmgr_settings);
+</script>
+]]>
+</INLINE>
+</FILE>
+
+<!-- event handler -->
+<FILE Name="/usr/local/emhttp/plugins/webvirtmgr/event/disks_mounted" Mode="0770">
+<INLINE>
+<![CDATA[
+#!/bin/bash
+source /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+if [ "$SERVICE" = "enable" ]; then
+	/etc/rc.d/rc.webvirtmgr start
+fi
+]]>
+</INLINE>
+</FILE>
+
+<!-- event handler -->
+<FILE Name="/usr/local/emhttp/plugins/webvirtmgr/event/unmounting_disks" Mode="0770">
+<INLINE>
+<![CDATA[
+#!/bin/bash
+/etc/rc.d/rc.webvirtmgr stop
+]]>
+</INLINE>
+</FILE>
+
+<FILE Name="/tmp/webvirtmgr-install" Run="/bin/bash">
+<INLINE>
+<![CDATA[
+# include our config vars
+source /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+sudo pip install -q -r /boot/config/plugins/webvirtmgr/requirements.txt
+rm /tmp/webvirtmgr-install
+]]>
+</INLINE>
+</FILE>
+
+</PLUGIN>
+
