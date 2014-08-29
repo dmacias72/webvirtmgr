@@ -4,10 +4,6 @@
 <!--
 This Plugin installs WebVirtMgr unRaid 6.0 ONLY. All dependencies are installed as needed and everything is controlable from the webgui.
 
-You'll have to add users and passwords from the console manually.
-Adding superusers
-INSTALL_DIRECTORY/manage.py createsuperuser --username=USERNAME
-
 Credits:
 Troy Wagner: Heavily updated this plugin originally created / modified by Tim Alexander.
 	This now contains more options and some validity to information added as to not break the app with invalid options.
@@ -17,8 +13,11 @@ Troy Wagner: Heavily updated this plugin originally created / modified by Tim Al
 Infuencer
 Benni-Chan: Much of the plug-in structure from his original plug-ins. Much of that code is still in place.
 Anatoliy Guskov aka retspen: for creating webvirtmgr https://github.com/retspen/webvirtmgr
-
 -->
+
+# You'll have to add users and passwords from the console manually.
+# Adding superusers
+# INSTALL_DIRECTORY/manage.py createsuperuser --username=USERNAME
 
 
 <FILE Name="/tmp/plugin-prepare" Run="/bin/bash">
