@@ -104,7 +104,7 @@ rm /tmp/webvirtmgr-cleanup
 # webvirtmgr configuration:
 SERVICE="disable"
 INSTALLDIR="/usr/local/webvirtmgr"
-CONFIGDIR="/usr/local/webvirtmgr/webvirtmgr"
+CONFIGDIR="/usr/local/webvirtmgr/config"
 LOGDIR=""
 CACHEDIR=""
 USESSL="no"
