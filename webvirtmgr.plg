@@ -40,9 +40,9 @@ rm -f /tmp/plugin-prepare
 </INLINE>
 </FILE>
 
-<FILE Name="/boot/packages/libvirt-1.2.0-x86_64-1ponce.txz" Run="upgradepkg --install-new">
-<URL>http://ponce.cc/slackware/slackware64-14.1/old.packages/libvirt-1.2.0-x86_64-1ponce.txz</URL>
-<MD5>5adffe4e337c67769f66d29348f7fad3</MD5>
+<FILE Name="/boot/packages/libvirt-python-1.2.6-x86_64-1ponce.txz" Run="upgradepkg --install-new">
+<URL>http://ponce.cc/slackware/slackware64-14.1/packages/libvirt-python-1.2.6-x86_64-1ponce.txz</URL>
+<MD5>b4763b77634747119a03f7f4e48c5dcc</MD5>
 </FILE>
 
 <FILE Name="/boot/packages/pip-1.5.6-x86_64-1_uqv.txz" Run="upgradepkg --install-new">
@@ -93,7 +93,7 @@ rm /tmp/webvirtmgr-cleanup
 <FILE Name="/boot/config/plugins/webvirtmgr/plgver.txt">
 <INLINE>
 <![CDATA[
-1.0
+1.1
 ]]>
 </INLINE>
 </FILE>
