@@ -1030,7 +1030,7 @@ fi
 source /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 sudo pip install -q -r /boot/config/plugins/webvirtmgr/requirements.txt
 /etc/rc.d/rc.libvirt stop
-sleep 2
+sleep 1
 /etc/rc.d/rc.libvirt start
 rm /tmp/webvirtmgr-install
 ]]>
