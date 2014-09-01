@@ -13,6 +13,7 @@ Troy Wagner: Heavily updated this plugin originally created / modified by Tim Al
 Infuencer
 Benni-Chan: Much of the plug-in structure from his original plug-ins. Much of that code is still in place.
 Anatoliy Guskov aka retspen: for creating webvirtmgr https://github.com/retspen/webvirtmgr
+Rafi Khardalian for adding local socket support https://github.com/rmk40/webvirtmgr
 -->
 
 # You'll have to add users and passwords from the console manually.
@@ -98,7 +99,7 @@ rm /tmp/webvirtmgr-cleanup
 <FILE Name="/boot/config/plugins/webvirtmgr/plgver.txt">
 <INLINE>
 <![CDATA[
-1.3
+1.4
 ]]>
 </INLINE>
 </FILE>
@@ -320,7 +321,7 @@ webvirtmgr_install()
 
 	# Clone from GIT to a temp folder, then move to final install dir
 	cd /tmp
-	git clone -b master https://github.com/retspen/webvirtmgr webvirtmgr
+	git clone -b master https://github.com/rmk40/webvirtmgr webvirtmgr
 	cd /
 	cp -af /tmp/webvirtmgr/. "$INSTALLDIR"
 	rm -Rf /tmp/webvirtmgr
