@@ -1,5 +1,18 @@
 <?xml version='1.0' standalone='yes'?>
-<PLUGIN>
+
+<!DOCTYPE PLUGIN [
+<!ENTITY name      "webvirtmgr">
+<!ENTITY author    "dmacias">
+<!ENTITY version   "2014.09.04">
+<!ENTITY category  "KVM Support">
+<!ENTITY pluginURL "https://github.com/dmacias72/webvirtmgr_unRAID_6/raw/master/webvirtmgr.plg">
+]>
+
+<PLUGIN  name="&name;"
+         author="&author;"
+         version="&version;"
+         category="&category;"
+         pluginURL="&pluginURL;">
 
 <!--
 This Plugin installs WebVirtMgr unRaid 6.0 ONLY. All dependencies are installed as needed and everything is controlable from the webgui.
@@ -39,10 +52,6 @@ fi
 # Remove this script
 rm -f /tmp/plugin-prepare
 </INLINE>
-</FILE>
-
-<FILE Name="/boot/packages/libvirt-1.2.8-x86_64-1_SBo.tgz" Run="upgradepkg --install-new">
-<URL>https://dl.dropboxusercontent.com/s/nptr4m6vutkwlc0/libvirt-1.2.8-x86_64-1_SBo.tgz</URL>
 </FILE>
 
 <FILE Name="/boot/packages/libvirt-python-1.2.8-x86_64-1_SBo.tgz" Run="upgradepkg --install-new">
@@ -88,16 +97,7 @@ rm -f /tmp/plugin-prepare
 <![CDATA[
 [ -d /usr/local/emhttp/plugins/webvirtmgr ] && rm -f -R /usr/local/emhttp/plugins/webvirtmgr
 [ -f /etc/rc.d/rc.webvirtmgr ] && rm -f /etc/rc.d/rc.webvirtmgr
-[ -f /boot/config/plugins/webvirtmgr/plgver.txt ] && rm -f /boot/config/plugins/webvirtmgr/plgver.txt
 rm /tmp/webvirtmgr-cleanup
-]]>
-</INLINE>
-</FILE>
-
-<FILE Name="/boot/config/plugins/webvirtmgr/plgver.txt">
-<INLINE>
-<![CDATA[
-1.5
 ]]>
 </INLINE>
 </FILE>
@@ -137,7 +137,7 @@ rm /tmp/hp-chkconf
 <INLINE>
 <![CDATA[
 #!/bin/sh
-# start|stop|restart|enable|disable|install|update|storagesize|datacheck|updateplg|downgradeplg|latestversion|currentversion webvirtmgr.
+# start|stop|restart|enable|disable|install|update|storagesize|datacheck| webvirtmgr.
 
 webvirtmgr_start()
 {
@@ -153,12 +153,12 @@ webvirtmgr_start()
 		return
 	fi
 
-	# if directory doesn't exist or exe is not found, install it
+	# if directory doesn't exist or py is not found, install it
 	if [[ "$INSTALLDIR" != "" &&  ! -e "$INSTALLDIR/manage.py" ]]; then
 		webvirtmgr_install
 	fi
 
-	echo "Starting Web Virt Manager: $CMDLINE"
+	echo "Starting Web Virtual Manager"
 	sleep 1
 	sudo -H -u "$RUNAS" /bin/bash -c "nohup /usr/bin/python $INSTALLDIR/manage.py runserver 0:$PORT > /dev/null 2>&1 &"	
 
@@ -190,7 +190,7 @@ webvirtmgr_start()
 webvirtmgr_stop()
 {
 	PIDS=$(pgrep -f manage.py)
-	echo "Stopping Web Virt Manager..."
+	echo "Stopping Web Virtual Manager..."
 	sleep 1
 
 	# Send the kill command to gracefully shutdown
@@ -319,7 +319,7 @@ webvirtmgr_install()
 
 	# Clone from GIT to a temp folder, then move to final install dir
 	cd /tmp
-	git clone -b master https://github.com/rmk40/webvirtmgr webvirtmgr
+	git clone -b master https://github.com/retspen/webvirtmgr webvirtmgr
 	cd /
 	cp -af /tmp/webvirtmgr/. "$INSTALLDIR"
 	rm -Rf /tmp/webvirtmgr
@@ -339,15 +339,6 @@ webvirtmgr_install()
 		echo "... Not Installed"
 	fi
 	sleep 1
-}
-
-webvirtmgr_newver()
-{
-	# This gets the latest version, if develop is selected, gets latest DEVELOP and defaults to MASTER if none found
-	REPOVER="${REPO}/commits/${BRANCH}.atom"
-	NEWVER=`wget -qO- --no-check-certificate "$REPOVER" |  grep -m 1 "2008:Grit" | sed -n 's!^.*Commit/\(.*\)</id>!\1!p'`
-
-	echo "$NEWVER"
 }
 
 webvirtmgr_curver()
@@ -399,39 +390,6 @@ webvirtmgr_datacheck()
 	fi
 }
 
-webvirtmgr_updateplg()
-{
-	APPNAME="webvirtmgr.plg"
-
-	# Rename current plugin as .old
-	cd /boot/config/plugins
-	[ -f "$APPNAME.old" ] && rm -f "$APPNAME.old"
-	if [ -f "$APPNAME" ]; then
-		mv "$APPNAME" "$APPNAME.old"
-	fi
-
-	# Download latest plugin
-	echo "Updating plugin"
-	wget -q --no-check-certificate "https://github.com/dmacias72/webvirtmgr_unRAID_6
-/raw/master/$APPNAME"
-
-	# Install new plugin
-	/usr/local/sbin/installplg "/boot/config/plugins/$APPNAME"
-}
-
-webvirtmgr_downgradeplg()
-{
-	APPNAME="webvirtmgr.plg"
-
-	# Remove current plugin and rename .old to current name
-	cd /boot/config/plugins
-	if [ -f "$APPNAME.old" ]; then
-		rm -f "$APPNAME"
-		mv "$APPNAME.old" "$APPNAME"
-		echo "Downgrading plugin"
-		/usr/local/sbin/installplg "/boot/config/plugins/$APPNAME"
-	fi
-}
 
 # read our configuration
 source /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
@@ -468,20 +426,11 @@ case "$1" in
 	'buttonstart')
 		webvirtmgr_buttonstart
 	;;
-	'updateplg')
-		webvirtmgr_updateplg
-	;;
-	'downgradeplg')
-		webvirtmgr_downgradeplg
-	;;
-	'latestversion')
-		webvirtmgr_newver
-	;;
 	'currentversion')
 		webvirtmgr_curver
 	;;
 	*)
-	echo "usage $0 start|stop|restart|enable|disable|install|update|storagesize|datacheck|updateplg|downgradeplg|latestversion|currentversion"
+	echo "usage $0 start|stop|restart|enable|disable|install|update|storagesize|datacheck|currentversion"
 esac
 ]]>
 </INLINE>
@@ -492,7 +441,7 @@ esac
 <![CDATA[
 Menu="NetworkServices"
 Icon="webvirtmgr.png"
-Version="1.0"
+Version="2014.09.04"
 Author="Derek Macias"
 Type="php"
 Title="KVM Manager"
@@ -648,25 +597,10 @@ if (file_exists("/boot/config/plugins/webvirtmgr/webvirtmgr.cfg"))
 
 $webvirtmgr_cfg = parse_ini_file( "/boot/config/plugins/webvirtmgr/webvirtmgr.cfg" );
 $webvirtmgr_installed = file_exists( $webvirtmgr_cfg["INSTALLDIR"] . "/manage.py" ) ? "yes" : "no";
-$machine_type = trim(shell_exec( "uname -m" ));
-$app_name = "webvirtmgr.plg";
-$webvirtmgr_rollback = file_exists( "boot/config/plugins/" . $app_name . ".old" ) ? "yes" : "no";
 
 # -------------------------------------------------------------------------
 ## Collect local variables from config files and verify data as best as possible
 # -------------------------------------------------------------------------
-
-# Plugin Current Version Variable
-$webvirtmgr_plgver = trim(shell_exec ( "cat /boot/config/plugins/webvirtmgr/plgver.txt" )); 
-
-# Get latest release of the plugin
-if ($is_conn == "true") {
-	$REPO2="https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6
-/master/versions";
-	$webvirtmgr_newversionPLG = trim(shell_exec ( "wget -qO- --no-check-certificate $REPO2 | sed -n 's/webvirtmgr: \(.*\)/\\1/p'" ));
-} else {
-	$webvirtmgr_newversionPLG = "";
-}
 
 # Service Status Variable
 if (isset($webvirtmgr_cfg['SERVICE']) && ($webvirtmgr_cfg['SERVICE'] == "enable" || $webvirtmgr_cfg['SERVICE'] == "disable"))
@@ -740,11 +674,6 @@ if ($webvirtmgr_installed=="yes") {
 		$webvirtmgr_curversion = "couldn't determine the WebVirtMgr version"; 
 }
 
-# Get plugin version current and new
-if ($webvirtmgr_newversionPLG != "" && $webvirtmgr_newversionPLG != $webvirtmgr_plgver )
-	$webvirtmgr_canupdatePLG = "yes";
-else	
-	$webvirtmgr_canupdatePLG = "no";
 ?>
 
 <div style="width: 49%; float:left">
@@ -752,15 +681,9 @@ else
 		<span class="left">Status:&#32;<img src='/plugins/webvirtmgr/device_status.png'>
 			<?if ($webvirtmgr_installed=="yes"):?>
 				<?if ($webvirtmgr_running=="yes"):?>
-					<?if ($webvirtmgr_usessl=="yes"):?>
-						<a href="https://<?=$var['NAME'];?>:<?=$webvirtmgr_port;?>" target="_blank">
-							<span class="green"><b>RUNNING</b></span>
-						</a>
-					<?else:?>
-						<a href="http://<?=$var['NAME'];?>:<?=$webvirtmgr_port;?>" target="_blank">
-							<span class="green"><b>RUNNING</b></span>
-						</a>
-					<?endif;?>
+					<a href="http://<?=$var['NAME'];?>:<?=$webvirtmgr_port;?>" target="_blank">
+						<span class="green"><b>RUNNING</b></span>
+					</a>
 					<span style="font-size:12px;"> with version: <b><?=$webvirtmgr_curversion?></b></span>
 				<?else:?>
 					<span class="red"><b>STOPPED</b></span>
@@ -792,16 +715,6 @@ else
 				</form>
 			</div>
 		<?endif;?>
-		<?if ($webvirtmgr_canupdate=="yes"):?>
-			<div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
-				<form name="webvirtmgr_updateapp" method="POST" action="/update.htm" target="progressFrame">
-					<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr update <?=$webvirtmgr_updatestatus?>">
-					<input id="updatebutton" type="submit" name="runCmd" value="Update WebVirtMgr">
-				</form><br>
-				<?echo "Installed Version: $webvirtmgr_curversion";?>&emsp;<br>
-				<b><?echo "Update to Version: $webvirtmgr_newversion";?>&emsp;</b>
-			</div>
-		<?endif;?>
 	<?else:?>
 		<div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
 			<form name="webvirtmgr_install" method="POST" action="/update.htm" target="progressFrame">
@@ -824,24 +737,6 @@ else
 	<? if ($is_conn == "false"):?>
 		<p style="color:red;margin-left:10px;"><b>No Internet Connection Detected</b></p>
 	<? endif; ?>
-	<p style="margin-left:10px;"><b>Plugin Version: <?=$webvirtmgr_plgver;?></b></p>
-	<? if ($webvirtmgr_rollback=="yes"):?>
-		<div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
-			<form name="webvirtmgr_downgrade" method="POST" action="/update.htm" target="progressFrame">
-				<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr downgradeplg">
-				<input type="submit" name="runCmd" value="Downgrade Plugin">
-			</form>
-		</div>
-	<?endif;?>
-	<?if ($webvirtmgr_canupdatePLG=="yes"):?>
-		<div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
-			<form name="webvirtmgr_update1" method="POST" action="/update.htm" target="progressFrame">
-				<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr updateplg">
-				<input id="updatebutton" type="submit" name="runCmd" value="Update Plugin">
-			</form><br>
-			<b><?echo "Update Plugin to Version: $webvirtmgr_newversionPLG";?>&emsp;</b>
-		</div>
-	<?endif;?>
 </div>
 <div style="width: 49%; float:right">
 	<div id="title">
@@ -1022,15 +917,28 @@ fi
 </INLINE>
 </FILE>
 
+<!-- create plugin README.md file -->
+<FILE Name="/usr/local/emhttp/plugins/&name;/README.md">
+<INLINE>
+**Web Virtual Manager support**
+
+WebVirtMgr is a libvirt-based Web interface for managing virtual machines. It allows you to create and configure new domains, and adjust a domain's resource allocation. A VNC viewer over a SSH tunnel presents a full graphical console to the guest domain. KVM is currently the only hypervisor supported
+</INLINE>
+</FILE>
+
+<!-- The 'remove' script. -->
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+  mv -f /boot/config/plugins/webvirtmgr.plg /boot/config/plugins/webvirtmgr.plg.old
+</INLINE>
+</FILE>
+
 <FILE Name="/tmp/webvirtmgr-install" Run="/bin/bash">
 <INLINE>
 <![CDATA[
 # include our config vars
 source /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 sudo pip install -q -r /boot/config/plugins/webvirtmgr/requirements.txt
-/etc/rc.d/rc.libvirt stop
-sleep 1
-/etc/rc.d/rc.libvirt start
 rm /tmp/webvirtmgr-install
 ]]>
 </INLINE>
