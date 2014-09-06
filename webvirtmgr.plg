@@ -5,7 +5,7 @@
 <!ENTITY author    "dmacias">
 <!ENTITY version   "2014.09.05p">
 <!ENTITY category  "VM Support">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/WebVirtMgr-x86_64.plg">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.plg">
 ]>
 
 <PLUGIN  name="&name;"
@@ -930,6 +930,7 @@ Install script.
 <![CDATA[
 # include our config vars
 source /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+wget -q https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.plg -O /boot/config/plugins/webvirtmgr.plg
 sudo pip install -q -r /boot/config/plugins/webvirtmgr/requirements.txt
 rm /tmp/webvirtmgr-install
 ]]>
