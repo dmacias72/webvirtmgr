@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "webvirtmgr">
 <!ENTITY author    "dmacias">
-<!ENTITY version   "2014.09.05">
+<!ENTITY version   "2014.09.05a">
 <!ENTITY category  "VM Support">
 <!ENTITY pluginURL "https://github.com/dmacias72/webvirtmgr_unRAID_6/raw/master/webvirtmgr.plg">
 ]>
@@ -86,17 +86,6 @@ rm -f /tmp/plugin-prepare
 
 <FILE Name="/boot/config/plugins/images/information.png">
 <URL>https://raw.githubusercontent.com/dmacias72/unRAID_6.0/master/information.png</URL>
-</FILE>
-
-<!-- clean up previous install -->
-<FILE Name="/tmp/webvirtmgr-cleanup" Run="/bin/bash">
-<INLINE>
-<![CDATA[
-[ -d /usr/local/emhttp/plugins/webvirtmgr ] && rm -f -R /usr/local/emhttp/plugins/webvirtmgr
-[ -f /etc/rc.d/rc.webvirtmgr ] && rm -f /etc/rc.d/rc.webvirtmgr
-rm /tmp/webvirtmgr-cleanup
-]]>
-</INLINE>
 </FILE>
 
 <FILE Name="/boot/config/plugins/webvirtmgr/webvirtmgr.cfg">
@@ -924,7 +913,7 @@ WebVirtMgr is a libvirt-based Web interface for managing virtual machines. It al
 <INLINE>
 rm -f -R /usr/local/emhttp/plugins/webvirtmgr
 rm -f /etc/rc.d/rc.webvirtmgr
-rm -f /boot/config/plugins/webvirtmgr.plg
+rm -f /boot/config/plugins/webvirtmgr
 </INLINE>
 </FILE>
 
