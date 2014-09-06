@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "webvirtmgr">
 <!ENTITY author    "dmacias">
-<!ENTITY version   "2014.09.05e">
+<!ENTITY version   "2014.09.05f">
 <!ENTITY category  "VM Support">
 <!ENTITY pluginURL "https://github.com/dmacias72/webvirtmgr_unRAID_6/raw/master/webvirtmgr.plg">
 ]>
@@ -928,8 +928,8 @@ Install script.
 <INLINE>
 <![CDATA[
 # include our config vars
-source /boot/config/plugins/&name;/webvirtmgr.cfg
-sudo pip install -q -r /boot/config/plugins/&name;/requirements.txt
+source /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+sudo pip install -q -r /boot/config/plugins/webvirtmgr/requirements.txt
 rm /tmp/webvirtmgr-install
 ]]>
 </INLINE>
