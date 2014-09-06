@@ -5,7 +5,7 @@
 <!ENTITY author    "dmacias">
 <!ENTITY version   "2014.09.05p">
 <!ENTITY category  "VM Support">
-<!ENTITY pluginURL "https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.plg">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/WebVirtMgr-x86_64.plg">
 ]>
 
 <PLUGIN  name="&name;"
