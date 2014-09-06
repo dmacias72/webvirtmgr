@@ -3,9 +3,9 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "webvirtmgr">
 <!ENTITY author    "dmacias">
-<!ENTITY version   "2014.09.05m">
+<!ENTITY version   "2014.09.05n">
 <!ENTITY category  "VM Support">
-<!ENTITY pluginURL "https://raw.github.com/dmaacias72/webvirtmgr_unRAID_6/master/webvirtmgr.plg">
+<!ENTITY pluginURL "https://raw.github.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.plg">
 ]>
 
 <PLUGIN  name="&name;"
@@ -76,6 +76,7 @@ rm -f /tmp/plugin-prepare
 <FILE Name="/boot/config/plugins/&name;/webvirtmgr.png">
 <URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.png</URL>
 </FILE>
+
 <FILE Name="/boot/config/plugins/images/device_status.png">
 <URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/device_status.png</URL>
 </FILE>
@@ -928,6 +929,7 @@ Install script.
 <INLINE>
 <![CDATA[
 # include our config vars
+wget https://raw.github.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.plg
 source /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 sudo pip install -q -r /boot/config/plugins/webvirtmgr/requirements.txt
 rm /tmp/webvirtmgr-install
