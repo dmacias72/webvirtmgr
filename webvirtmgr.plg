@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "webvirtmgr">
 <!ENTITY author    "dmacias">
-<!ENTITY version   "2014.09.05b">
+<!ENTITY version   "2014.09.05c">
 <!ENTITY category  "VM Support">
 <!ENTITY pluginURL "https://github.com/dmacias72/webvirtmgr_unRAID_6/raw/master/webvirtmgr.plg">
 ]>
@@ -67,10 +67,6 @@ rm -f /tmp/plugin-prepare
 <FILE Name="/boot/packages/git-1.8.4-x86_64-1.txz" Run="upgradepkg --install-new">
 <URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/git-1.8.4-x86_64-1.txz</URL>
 <MD5>e24d44ec30e7afc16c5509c4d9446140</MD5>
-</FILE>
-
-<FILE Name="/boot/config/plugins/webvirtmgr.plg">
-<URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.plg</URL>
 </FILE>
 
 <FILE Name="/boot/config/plugins/webvirtmgr/requirements.txt">
@@ -903,7 +899,9 @@ fi
 </INLINE>
 </FILE>
 
-<!-- create plugin README.md file -->
+<!--
+create plugin README.md file
+-->
 <FILE Name="/usr/local/emhttp/plugins/&name;/README.md">
 <INLINE>
 **Web Virtual Manager support**
@@ -912,15 +910,20 @@ WebVirtMgr is a libvirt-based Web interface for managing virtual machines. It al
 </INLINE>
 </FILE>
 
-<!-- The 'remove' script. -->
+<!--
+The 'remove' script.
+-->
 <FILE Run="/bin/bash" Method="remove">
 <INLINE>
-rm -f -R /usr/local/emhttp/plugins/webvirtmgr
+rm -r /usr/local/emhttp/plugins/&name;
+rm -r /boot/config/plugins/webvirtmgr
 rm -f /etc/rc.d/rc.webvirtmgr
-rm -f /boot/config/plugins/webvirtmgr
 </INLINE>
 </FILE>
 
+<!--
+Install script.
+-->
 <FILE Name="/tmp/webvirtmgr-install" Run="/bin/bash">
 <INLINE>
 <![CDATA[
