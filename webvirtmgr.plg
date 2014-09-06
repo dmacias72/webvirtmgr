@@ -3,8 +3,8 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "webvirtmgr">
 <!ENTITY author    "dmacias">
-<!ENTITY version   "2014.09.04">
-<!ENTITY category  "KVM Support">
+<!ENTITY version   "2014.09.05">
+<!ENTITY category  "VM Support">
 <!ENTITY pluginURL "https://github.com/dmacias72/webvirtmgr_unRAID_6/raw/master/webvirtmgr.plg">
 ]>
 
@@ -26,12 +26,9 @@ Troy Wagner: Heavily updated this plugin originally created / modified by Tim Al
 Infuencer
 Benni-Chan: Much of the plug-in structure from his original plug-ins. Much of that code is still in place.
 Anatoliy Guskov aka retspen: for creating webvirtmgr https://github.com/retspen/webvirtmgr
-Rafi Khardalian for adding local socket support https://github.com/rmk40/webvirtmgr
+Rafi Khardalian: adding local socket support to webvirtmgr and help
+Peter: compiling libvirt packages, help and testing
 -->
-
-# You'll have to add users and passwords from the console manually.
-# Adding superusers
-# INSTALL_DIRECTORY/manage.py createsuperuser --username=USERNAME
 
 
 <FILE Name="/tmp/plugin-prepare" Run="/bin/bash">
@@ -55,29 +52,29 @@ rm -f /tmp/plugin-prepare
 </FILE>
 
 <FILE Name="/boot/packages/libvirt-python-1.2.8-x86_64-1_SBo.tgz" Run="upgradepkg --install-new">
-<URL>https://dl.dropboxusercontent.com/s/hi779w3qkqpt68s/libvirt-python-1.2.8-x86_64-1_SBo.tgz</URL>
+<URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/libvirt-python-1.2.8-x86_64-1_SBo.tgz</URL>
 </FILE>
 
 <FILE Name="/boot/packages/pip-1.5.6-x86_64-1_uqv.txz" Run="upgradepkg --install-new">
-<URL>http://www.vislab.uq.edu.au/slackware64/14.1/pip-1.5.6-x86_64-1_uqv.txz</URL>
+<URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/pip-1.5.6-x86_64-1_uqv.txz</URL>
 </FILE>
 
 <FILE Name="/boot/packages/pysetuptools-3.6-x86_64-1ponce.txz" Run="upgradepkg --install-new">
-<URL>http://ponce.cc/slackware/slackware64-14.1/packages/pysetuptools-3.6-x86_64-1ponce.txz</URL>
+<URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/pysetuptools-3.6-x86_64-1ponce.txz</URL>
 <MD5>8ff5271f08e258ce46e8e96bebec66aa</MD5>
 </FILE>
 
 <FILE Name="/boot/packages/git-1.8.4-x86_64-1.txz" Run="upgradepkg --install-new">
-<URL>http://slackware.cs.utah.edu/pub/slackware/slackware64-14.1/slackware64/d/git-1.8.4-x86_64-1.txz</URL>
+<URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/git-1.8.4-x86_64-1.txz</URL>
 <MD5>e24d44ec30e7afc16c5509c4d9446140</MD5>
 </FILE>
 
 <FILE Name="/boot/config/plugins/webvirtmgr/requirements.txt">
-<URL>--no-check-certificate https://raw.githubusercontent.com/retspen/webvirtmgr/master/requirements.txt</URL>
+<URL>https://raw.githubusercontent.com/retspen/webvirtmgr/master/requirements.txt</URL>
 </FILE>
 
 <FILE Name="/boot/config/plugins/webvirtmgr/webvirtmgr.png">
-<URL>--no-check-certificate https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.png</URL>
+<URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.png</URL>
 </FILE>
 <FILE Name="/boot/config/plugins/images/device_status.png">
 <URL>https://raw.githubusercontent.com/dmacias72/unRAID_6.0/master/device_status.png</URL>
@@ -110,8 +107,8 @@ SERVICE="disable"
 INSTALLDIR="/usr/local/webvirtmgr"
 PORT="8000"
 RUNAS="nobody"
-PLG_STORAGESIZE="yes"
-PLG_DATACHECK="yes"
+USERNAME="username"
+PASSWORD="password"
 ]]>
 </INLINE>
 </FILE>
@@ -126,8 +123,8 @@ CFGFILE=/boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 [ ! `cat "$CFGFILE" | grep INSTALLDIR` ] && echo "INSTALLDIR=\"/usr/local/webvirtmgr\"" >> "$CFGFILE"
 [ ! `cat "$CFGFILE" | grep ^PORT` ] && echo "PORT=\"8000\"" >> "$CFGFILE"
 [ ! `cat "$CFGFILE" | grep RUNAS` ] && echo "RUNAS=\"nobody\"" >> "$CFGFILE"
-[ ! `cat "$CFGFILE" | grep PLG_STORAGESIZE` ] && echo "PLG_STORAGESIZE=\"yes\"" >> "$CFGFILE"
-[ ! `cat "$CFGFILE" | grep PLG_DATACHECK` ] && echo "PLG_DATACHECK=\"yes\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep USERNAME` ] && echo "USERNAME=\"yes\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep PASSWORD` ] && echo "PASSWORD=\"yes\"" >> "$CFGFILE"
 rm /tmp/hp-chkconf
 ]]>
 </INLINE>
@@ -137,7 +134,7 @@ rm /tmp/hp-chkconf
 <INLINE>
 <![CDATA[
 #!/bin/sh
-# start|stop|restart|enable|disable|install|update|storagesize|datacheck| webvirtmgr.
+# start|stop|restart|enable|disable|install|createsuperuser|update|storagesize|datacheck|currentversion webvirtmgr.
 
 webvirtmgr_start()
 {
@@ -253,8 +250,8 @@ write_config()
 	echo "INSTALLDIR=\"$INSTALLDIR\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 	echo "PORT=\"$PORT\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 	echo "RUNAS=\"$RUNAS\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
-	echo "PLG_STORAGESIZE=\"$PLG_STORAGESIZE\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
-	echo "PLG_DATACHECK=\"$PLG_DATACHECK\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "USERNAME=\"$USERNAME\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "PASSWORD=\"$PASSWORD\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 	sleep 1
 }
 
@@ -282,8 +279,8 @@ webvirtmgr_change_settings()
 		fi
 	fi
 
-	PLG_STORAGESIZE="$4"
-	PLG_DATACHECK="$5"
+	USERNAME="$4"
+	PASSWORD="$5"
 
 }
 
@@ -327,6 +324,8 @@ webvirtmgr_install()
 	/usr/bin/python $INSTALLDIR/manage.py syncdb --noinput
 	/usr/bin/python $INSTALLDIR/manage.py collectstatic --noinput
 
+	webvirtmgr_createsuperuser
+
 	OWNER=$(stat -c %U "$INSTALLDIR")
 	if [ "$OWNER" != "$RUNAS" ]; then
 		chown -R "$RUNAS":users "$INSTALLDIR"
@@ -339,6 +338,25 @@ webvirtmgr_install()
 		echo "... Not Installed"
 	fi
 	sleep 1
+}
+
+webvirtmgr_createsuperuser()
+{
+	echo "Creating Username and Password..."
+	expect <<- DONE
+	  set timeout -1
+
+	  spawn  $INSTALLDIR/manage.py createsuperuser --username $USERNAME --email none > /dev/null 2>&1 &
+	  match_max 100000
+
+	  expect "Password:"
+	  send -- "$PASSWORD\r"
+	  expect "Password (again):"
+	  send -- "$PASSWORD\r"
+	  send -- "\r"
+	  expect eof
+	DONE
+
 }
 
 webvirtmgr_curver()
@@ -414,6 +432,9 @@ case "$1" in
 	'install')
 		webvirtmgr_install
 	;;
+	'createsuperuser')
+		webvirtmgr_createsuperuser
+	;;
 	'update')
 		webvirtmgr_update $2
 	;;
@@ -430,7 +451,7 @@ case "$1" in
 		webvirtmgr_curver
 	;;
 	*)
-	echo "usage $0 start|stop|restart|enable|disable|install|update|storagesize|datacheck|currentversion"
+	echo "usage $0 start|stop|restart|enable|disable|install|createsuperuser|update|storagesize|datacheck|currentversion"
 esac
 ]]>
 </INLINE>
@@ -441,10 +462,9 @@ esac
 <![CDATA[
 Menu="NetworkServices"
 Icon="webvirtmgr.png"
-Version="2014.09.04"
 Author="Derek Macias"
 Type="php"
-Title="KVM Manager"
+Title="VM Manager"
 ]]>
 </INLINE>
 </FILE>
@@ -637,17 +657,17 @@ if (isset($webvirtmgr_cfg['RUNAS']))
 else
 	$webvirtmgr_runas = "nobody";
 
-# Storage Check Status Variable
-if (isset($webvirtmgr_cfg['PLG_STORAGESIZE']) && ($webvirtmgr_cfg['PLG_STORAGESIZE'] == "yes" || $webvirtmgr_cfg['PLG_STORAGESIZE'] == "no"))
-	$webvirtmgr_storagesizestat = $webvirtmgr_cfg['PLG_STORAGESIZE'];
+# Username Check Status Variable
+if (isset($webvirtmgr_cfg['USERNAME']))
+	$webvirtmgr_username = $webvirtmgr_cfg['USERNAME'];
 else
-	$webvirtmgr_storagesizestat = "yes";
+	$webvirtmgr_username = "username";
 
-# Data Check Status Variable
-if (isset($webvirtmgr_cfg['PLG_DATACHECK']) && ($webvirtmgr_cfg['PLG_DATACHECK'] == "yes" || $webvirtmgr_cfg['PLG_DATACHECK'] == "no"))
-	$webvirtmgr_datacheckstat = $webvirtmgr_cfg['PLG_DATACHECK'];
+# Password Check Status Variable
+if (isset($webvirtmgr_cfg['PASSWORD']))
+	$webvirtmgr_password = $webvirtmgr_cfg['PASSWORD'];
 else
-	$webvirtmgr_datacheckstat = "yes";
+	$webvirtmgr_password = "password";
 
 # -------------------------------------------------------------------------
 ## Check is program is installed and running to get extra information
@@ -663,10 +683,8 @@ if ($webvirtmgr_installed=="yes") {
 	else
 		$webvirtmgr_updatestatus = "Stopped";
 
-	if ($webvirtmgr_storagesizestat == "yes")
-		$webvirtmgr_storagesize = shell_exec ( "/etc/rc.d/rc.webvirtmgr storagesize" );
-	if ($webvirtmgr_datacheckstat == "yes")
-		$webvirtmgr_datacheck = shell_exec ( "/etc/rc.d/rc.webvirtmgr datacheck" );
+	$webvirtmgr_storagesize = shell_exec ( "/etc/rc.d/rc.webvirtmgr storagesize" );
+	$webvirtmgr_datacheck = shell_exec ( "/etc/rc.d/rc.webvirtmgr datacheck" );
 
 	# Get current installed version of the program
 	$webvirtmgr_curversion = trim(shell_exec( "/etc/rc.d/rc.webvirtmgr currentversion" ));
@@ -727,17 +745,16 @@ if ($webvirtmgr_installed=="yes") {
 		<span class="left">Information:&#32;<img src='/plugins/webvirtmgr/information.png'></span>
 	</div>
 	<? if ($webvirtmgr_installed=="yes"): ?>  
-		<? if ($webvirtmgr_storagesizestat == "yes"): ?>
-			<?=$webvirtmgr_storagesize?>
-		<? endif; ?>
-		<? if ($webvirtmgr_datacheckstat == "yes"): ?>
-			<?=$webvirtmgr_datacheck?>
-		<? endif; ?>
+		<?=$webvirtmgr_storagesize?>
+		<?=$webvirtmgr_datacheck?>
 	<? endif; ?>
 	<? if ($is_conn == "false"):?>
 		<p style="color:red;margin-left:10px;"><b>No Internet Connection Detected</b></p>
 	<? endif; ?>
 </div>
+
+
+
 <div style="width: 49%; float:right">
 	<div id="title">
 		<span class="left">Configuration:&#32;<img src='/plugins/webvirtmgr/new_config.png'></span>
@@ -775,23 +792,15 @@ if ($webvirtmgr_installed=="yes") {
 			</tr>
 			<tr><td colspan="2"><div style="background-color:#FFFFFF;border:1px solid #000000;height:1px;width:100%;font-size:8px;"> </div></td></tr>
 			<tr>
-				<td>Show storage memory usage:</td>
+				<td>Username:</td>
 				<td>
-					<select name="storagesize" size="1" onChange="checkSTORAGE(this.form);">
-						<?=mk_option($webvirtmgr_storagesizestat, "yes", "Yes");?>
-						<?=mk_option($webvirtmgr_storagesizestat, "no", "No");?>
-					</select>
-					<input type="hidden" name="arg5" value="<?=$webvirtmgr_storagesizestat;?>">
+					<input type="text" name="arg5" value="<?=$webvirtmgr_username;?>">
 				</td>
 			</tr>
 			<tr>
-				<td>Show data persistency information:</td>
+				<td>Password:</td>
 				<td>
-					<select name="datacheck" size="1" onChange="checkDATAPERSIST(this.form);">
-						<?=mk_option($webvirtmgr_datacheckstat, "yes", "Yes");?>
-						<?=mk_option($webvirtmgr_datacheckstat, "no", "No");?>
-					</select>
-					<input type="hidden" name="arg6" value="<?=$webvirtmgr_datacheckstat;?>">
+					<input type="password" name="arg6" value="<?=$webvirtmgr_password;?>">
 				</td>
 			</tr>
 		</table>
@@ -814,8 +823,6 @@ function checkRUNNING(form)
 		form.arg5.readOnly = true;
 		form.arg6.readOnly = true;
 		form.runas.disabled = true;
-		form.storagesize.disabled = true;
-		form.datacheck.disabled = true;
    } 
    else
    {
@@ -825,8 +832,6 @@ function checkRUNNING(form)
 		form.arg5.readOnly = (form.arg1.value == "enable");
 		form.arg6.readOnly = (form.arg1.value == "enable");
 		form.runas.disabled = (form.arg1.value == "enable");
-		form.storagesize.disabled = (form.arg1.value == "enable");
-		form.datacheck.disabled = (form.arg1.value == "enable");
    }
 }
  
@@ -841,16 +846,6 @@ function checkUSER(form)
 	}
 }
 
-
-function checkSTORAGE(form)
-{
-	form.arg5.value = form.storagesize.options[form.storagesize.selectedIndex].value;
-}
-
-function checkDATAPERSIST(form)
-{
-	form.arg6.value = form.datacheck.options[form.datacheck.selectedIndex].value;
-}
 
 function verifyDATA(form)
 {
@@ -867,11 +862,11 @@ function verifyDATA(form)
 	if (form.arg4.value == ""){
 		form.arg4.value = "nobody";
 	}
-	if (form.arg5.value != "yes" && form.arg5.value != "no"){
-		form.arg5.value = "yes";
+	if (form.arg5.value == ""){
+		form.arg5.value = "username";
 	}
-	if (form.arg6.value != "yes" && form.arg6.value != "no"){
-		form.arg6.value = "yes";
+	if (form.arg6.value == ""){
+		form.arg6.value = "password";
 	}
 
 	form.arg1.value = form.arg1.value.replace(/ /g,"_");
@@ -887,8 +882,6 @@ function isNumber(n) {
 }
 
 checkUSER(document.webvirtmgr_settings);
-checkSTORAGE(document.webvirtmgr_settings);
-checkDATAPERSIST(document.webvirtmgr_settings);
 </script>
 ]]>
 </INLINE>
@@ -929,7 +922,9 @@ WebVirtMgr is a libvirt-based Web interface for managing virtual machines. It al
 <!-- The 'remove' script. -->
 <FILE Run="/bin/bash" Method="remove">
 <INLINE>
-  mv -f /boot/config/plugins/webvirtmgr.plg /boot/config/plugins/webvirtmgr.plg.old
+rm -f -R /usr/local/emhttp/plugins/webvirtmgr
+rm -f /etc/rc.d/rc.webvirtmgr
+rm -f /boot/config/plugins/webvirtmgr.plg
 </INLINE>
 </FILE>
 
