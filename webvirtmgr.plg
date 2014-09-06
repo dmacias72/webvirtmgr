@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "webvirtmgr">
 <!ENTITY author    "dmacias">
-<!ENTITY version   "2014.09.05c">
+<!ENTITY version   "2014.09.05d">
 <!ENTITY category  "VM Support">
 <!ENTITY pluginURL "https://github.com/dmacias72/webvirtmgr_unRAID_6/raw/master/webvirtmgr.plg">
 ]>
