@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "webvirtmgr">
 <!ENTITY author    "dmacias">
-<!ENTITY version   "2014.09.06">
+<!ENTITY version   "2014.09.06a">
 <!ENTITY category  "VM Support">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.plg">
 ]>
@@ -53,6 +53,16 @@ rm -f /tmp/plugin-prepare
 
 <FILE Name="/boot/packages/libvirt-python-1.2.8-x86_64-1_SBo.tgz" Run="upgradepkg --install-new">
 <URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/libvirt-python-1.2.8-x86_64-1_SBo.tgz</URL>
+</FILE>
+
+<FILE Name="/boot/packages/tcl-8.6.1-x86_64-1.txz" Run="upgradepkg --install-new">
+<URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/tcl-8.6.1-x86_64-1.txz</URL>
+<MD5>81a2ee6b801ff63a0b96ac8239fc9f26</MD5>
+</FILE>
+
+<FILE Name="/boot/packages/expect-5.44.1.15-x86_64-2.txz" Run="upgradepkg --install-new">
+<URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/expect-5.44.1.15-x86_64-2.txz</URL>
+<MD5>ba1415d7928ade48de4d17c74d65a7a1</MD5>
 </FILE>
 
 <FILE Name="/boot/packages/pip-1.5.6-x86_64-1_uqv.txz" Run="upgradepkg --install-new">
@@ -346,7 +356,9 @@ webvirtmgr_createsuperuser()
 	  send -- "\r"
 	  expect eof
 	DONE
-
+	USERNAME="username"
+	PASSWORD="password"
+	write_config
 }
 
 webvirtmgr_curver()
@@ -782,16 +794,29 @@ if ($webvirtmgr_installed=="yes") {
 			</tr>
 			<tr><td colspan="2"><div style="background-color:#FFFFFF;border:1px solid #000000;height:1px;width:100%;font-size:8px;"> </div></td></tr>
 			<tr>
-				<td>Username:</td>
-				<td>
-					<input type="text" name="arg5" value="<?=$webvirtmgr_username;?>">
-				</td>
+				<?if ($webvirtmgr_installed=="yes"):?>
+					<td>
+						<input type="hidden" name="arg5" value="<?=$webvirtmgr_username;?>">
+					</td>
+				<?else:?>
+					<td>Username:</td>
+					<td>
+						<input type="text" name="arg5" value="<?=$webvirtmgr_username;?>">
+					</td>
+				<?endif;?>
 			</tr>
 			<tr>
-				<td>Password:</td>
-				<td>
-					<input type="password" name="arg6" value="<?=$webvirtmgr_password;?>">
-				</td>
+				<?if ($webvirtmgr_installed=="yes"):?>
+					<td>
+						<input type="hidden" name="arg6" value="<?=$webvirtmgr_password;?>">
+					</td>
+
+				<?else:?>
+					<td>Password:</td>
+					<td>
+						<input type="password" name="arg6" value="<?=$webvirtmgr_password;?>">
+					</td>
+				<?endif;?>
 			</tr>
 		</table>
 		<div align="center">
