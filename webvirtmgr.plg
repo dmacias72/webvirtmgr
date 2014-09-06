@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "webvirtmgr">
 <!ENTITY author    "dmacias">
-<!ENTITY version   "2014.09.05d">
+<!ENTITY version   "2014.09.05e">
 <!ENTITY category  "VM Support">
 <!ENTITY pluginURL "https://github.com/dmacias72/webvirtmgr_unRAID_6/raw/master/webvirtmgr.plg">
 ]>
@@ -69,11 +69,11 @@ rm -f /tmp/plugin-prepare
 <MD5>e24d44ec30e7afc16c5509c4d9446140</MD5>
 </FILE>
 
-<FILE Name="/boot/config/plugins/webvirtmgr/requirements.txt">
+<FILE Name="/boot/config/plugins/&name;/requirements.txt">
 <URL>https://raw.githubusercontent.com/retspen/webvirtmgr/master/requirements.txt</URL>
 </FILE>
 
-<FILE Name="/boot/config/plugins/webvirtmgr/webvirtmgr.png">
+<FILE Name="/boot/config/plugins/&name;/webvirtmgr.png">
 <URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.png</URL>
 </FILE>
 <FILE Name="/boot/config/plugins/images/device_status.png">
@@ -88,7 +88,7 @@ rm -f /tmp/plugin-prepare
 <URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/information.png</URL>
 </FILE>
 
-<FILE Name="/boot/config/plugins/webvirtmgr/webvirtmgr.cfg">
+<FILE Name="/boot/config/plugins/&name;/webvirtmgr.cfg">
 <INLINE>
 <![CDATA[
 # webvirtmgr configuration:
@@ -446,7 +446,7 @@ esac
 </INLINE>
 </FILE>
 
-<FILE Name="/usr/local/emhttp/plugins/webvirtmgr/webvirtmgr.page">
+<FILE Name="/usr/local/emhttp/plugins/&name;/webvirtmgr.page">
 <INLINE>
 <![CDATA[
 Menu="NetworkServices"
@@ -458,23 +458,23 @@ Title="VM Manager"
 </INLINE>
 </FILE>
 
-<FILE Name="/usr/local/emhttp/plugins/webvirtmgr/webvirtmgr.png">
-<LOCAL>/boot/config/plugins/webvirtmgr/webvirtmgr.png</LOCAL>
+<FILE Name="/usr/local/emhttp/plugins/&name;/webvirtmgr.png">
+<LOCAL>/boot/config/plugins/&name;/webvirtmgr.png</LOCAL>
 </FILE>
 
-<FILE Name="/usr/local/emhttp/plugins/webvirtmgr/device_status.png">
+<FILE Name="/usr/local/emhttp/plugins/&name;/device_status.png">
 <LOCAL>/boot/config/plugins/images/device_status.png</LOCAL>
 </FILE>
 
-<FILE Name="/usr/local/emhttp/plugins/webvirtmgr/new_config.png">
+<FILE Name="/usr/local/emhttp/plugins/&name;/new_config.png">
 <LOCAL>/boot/config/plugins/images/new_config.png</LOCAL>
 </FILE>
 
-<FILE Name="/usr/local/emhttp/plugins/webvirtmgr/information.png">
+<FILE Name="/usr/local/emhttp/plugins/&name;/information.png">
 <LOCAL>/boot/config/plugins/images/information.png</LOCAL>
 </FILE>
 
-<FILE Name="/usr/local/emhttp/plugins/webvirtmgr/webvirtmgr.css">
+<FILE Name="/usr/local/emhttp/plugins/&name;/webvirtmgr.css">
 <INLINE>
 <![CDATA[
 <style type="text/css">
@@ -582,7 +582,7 @@ border-collapse: separate;
 </INLINE>
 </FILE>
 
-<FILE Name="/usr/local/emhttp/plugins/webvirtmgr/webvirtmgr.php">
+<FILE Name="/usr/local/emhttp/plugins/&name;/webvirtmgr.php">
 <INLINE>
 <![CDATA[
 <?php include '/usr/local/emhttp/plugins/webvirtmgr/webvirtmgr.css';?>
@@ -877,7 +877,7 @@ checkUSER(document.webvirtmgr_settings);
 </FILE>
 
 <!-- event handler -->
-<FILE Name="/usr/local/emhttp/plugins/webvirtmgr/event/disks_mounted" Mode="0770">
+<FILE Name="/usr/local/emhttp/plugins/&name;/event/disks_mounted" Mode="0770">
 <INLINE>
 <![CDATA[
 #!/bin/bash
@@ -890,7 +890,7 @@ fi
 </FILE>
 
 <!-- event handler -->
-<FILE Name="/usr/local/emhttp/plugins/webvirtmgr/event/unmounting_disks" Mode="0770">
+<FILE Name="/usr/local/emhttp/plugins/&name;/event/unmounting_disks" Mode="0770">
 <INLINE>
 <![CDATA[
 #!/bin/bash
@@ -916,7 +916,7 @@ The 'remove' script.
 <FILE Run="/bin/bash" Method="remove">
 <INLINE>
 rm -r /usr/local/emhttp/plugins/&name;
-rm -r /boot/config/plugins/webvirtmgr
+rm -r /boot/config/plugins/&name;
 rm -f /etc/rc.d/rc.webvirtmgr
 </INLINE>
 </FILE>
@@ -928,8 +928,8 @@ Install script.
 <INLINE>
 <![CDATA[
 # include our config vars
-source /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
-sudo pip install -q -r /boot/config/plugins/webvirtmgr/requirements.txt
+source /boot/config/plugins/&name;/webvirtmgr.cfg
+sudo pip install -q -r /boot/config/plugins/&name;/requirements.txt
 rm /tmp/webvirtmgr-install
 ]]>
 </INLINE>
