@@ -3,9 +3,9 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "webvirtmgr">
 <!ENTITY author    "dmacias">
-<!ENTITY version   "2014.09.05h">
+<!ENTITY version   "2014.09.05i">
 <!ENTITY category  "VM Support">
-<!ENTITY pluginURL "https://github.com/dmacias72/webvirtmgr_unRAID_6/raw/master/webvirtmgr.plg">
+<!ENTITY pluginURL "https://raw.github.com/dmaacias72/webvirtmgr/unRAID_6/master/webvirtmgr.plg">
 ]>
 
 <PLUGIN  name="&name;"
@@ -67,10 +67,6 @@ rm -f /tmp/plugin-prepare
 <FILE Name="/boot/packages/git-1.8.4-x86_64-1.txz" Run="upgradepkg --install-new">
 <URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/git-1.8.4-x86_64-1.txz</URL>
 <MD5>e24d44ec30e7afc16c5509c4d9446140</MD5>
-</FILE>
-
-<FILE Name="/boot/config/plugins/webvirtmgr.plg">
-<URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.plg</URL>
 </FILE>
 
 <FILE Name="/boot/config/plugins/&name;/requirements.txt">
