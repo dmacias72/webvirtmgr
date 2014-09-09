@@ -134,7 +134,7 @@ rm /tmp/hp-chkconf
 <INLINE>
 <![CDATA[
 #!/bin/sh
-# start|stop|restart|enable|disable|install|createsuperuser|update|storagesize|datacheck|currentversion webvirtmgr.
+# start|stop|restart|enable|disable|install|createsuperuser|changepassword|update|storagesize|datacheck|currentversion webvirtmgr.
 
 webvirtmgr_start()
 {
@@ -144,8 +144,7 @@ webvirtmgr_start()
 	fi
 
 	# no-op if already running
-	PIDS=$(pgrep -f manage.py)
-	if [ "$PIDS" != "" ]; then
+	if [ "$(pgrep -f manage.py)" ]; then
 		echo "webvirtmgr already running."
 		return
 	fi
@@ -163,10 +162,9 @@ webvirtmgr_start()
 	TIMER=0
 	STARTFAIL="0"
 	sleep 2
-	while [ "$PIDS" = "" ]; do
+	while [ ! "$(pgrep -f manage.py)" ]; do
 		let TIMER=$TIMER+1
 		sleep 1
-		PIDS=$(pgrep -f manage.py)
 		if [ $TIMER -gt 10 ]; then
 			echo "Application did not start for some reason"
 			sleep 1
@@ -186,7 +184,6 @@ webvirtmgr_start()
 
 webvirtmgr_stop()
 {
-	PIDS=$(pgrep -f manage.py)
 	echo "Stopping Web Virtual Manager..."
 	sleep 1
 
@@ -195,10 +192,9 @@ webvirtmgr_stop()
 
 	# Begin a timer for shutdown, force kill process if not shut down by end of timer
 	TIMER=0
-	while [ "$PIDS" != "" ]; do
+	while [ "$(pgrep -f manage.py)" ]; do
 		let TIMER=$TIMER+1
 		sleep 1
-		PIDS=$(pgrep -f manage.py)
 		if [ $TIMER -gt 10 ]; then
 			echo "Application has not shut down yet, killing the process"
 			sleep 1
@@ -250,14 +246,12 @@ write_config()
 	echo "INSTALLDIR=\"$INSTALLDIR\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 	echo "PORT=\"$PORT\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 	echo "RUNAS=\"$RUNAS\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
-	echo "USERNAME=\"$USERNAME\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
-	echo "PASSWORD=\"$PASSWORD\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 	sleep 1
 }
 
-
 webvirtmgr_change_settings()
 {
+	echo "Applying Settings..."
 	INSTALLDIR="$1"
 
 	PORT="$2"
@@ -281,30 +275,38 @@ webvirtmgr_change_settings()
 
 	USERNAME="$4"
 	PASSWORD="$5"
+	USERPASS="$6"
 
+	if [ "$USERPASS" == "create" ]; then
+			echo "Creating new user $USERNAME..."
+			sleep 2
+			webvirtmgr_createsuperuser
+	fi
+
+	if [ "$USERPASS" == "change" ]; then
+				echo "Changing Password for $USERNAME..."
+				sleep 2
+				webvirtmgr_changepassword
+	fi
 }
 
 webvirtmgr_enable()
 {
-	webvirtmgr_stop
 	SERVICE=enable
-	webvirtmgr_change_settings $1 $2 $3 $4 $5 
+	webvirtmgr_change_settings $1 $2 $3 $4 $5 $6
 	write_config
-	webvirtmgr_start
 }
 
 webvirtmgr_disable()
 {
-	webvirtmgr_stop
 	SERVICE=disable
-	webvirtmgr_change_settings $1 $2 $3 $4 $5
+	webvirtmgr_change_settings $1 $2 $3 $4 $5 $6
 	write_config
 }
 
 webvirtmgr_install()
 {
 	echo "Installing latest version of webvirtmgr from master..."
-
 	if [ ! -d "$INSTALLDIR" ]; then 
 		mkdir -p "$INSTALLDIR"
 		if [ ! -d "$INSTALLDIR" ]; then 
@@ -312,7 +314,6 @@ webvirtmgr_install()
 			exit 1
 		fi
 	fi
-
 
 	# Clone from GIT to a temp folder, then move to final install dir
 	cd /tmp
@@ -323,8 +324,6 @@ webvirtmgr_install()
 	cp -f $INSTALLDIR/webvirtmgr/local/local_settings.py.example $INSTALLDIR/webvirtmgr/local/local_settings.py
 	/usr/bin/python $INSTALLDIR/manage.py syncdb --noinput
 	/usr/bin/python $INSTALLDIR/manage.py collectstatic --noinput
-
-	webvirtmgr_createsuperuser
 
 	OWNER=$(stat -c %U "$INSTALLDIR")
 	if [ "$OWNER" != "$RUNAS" ]; then
@@ -342,23 +341,49 @@ webvirtmgr_install()
 
 webvirtmgr_createsuperuser()
 {
-	echo "Creating Username and Password..."
-	expect <<- DONE
-	  set timeout -1
+	echo "Creating Username: $USERNAME and Password..."
+	if [ ! "$PASSWORD" ]; then
+		echo "Blank Passwords not Allowed!!...."
+		sleep 2
+	else
+		expect <<- DONE
+		  set timeout -1
 
-	  spawn  $INSTALLDIR/manage.py createsuperuser --username $USERNAME --email none > /dev/null 2>&1 &
-	  match_max 100000
+		  spawn  $INSTALLDIR/manage.py createsuperuser --username $USERNAME --email none
+		  match_max 100000
 
-	  expect "Password:"
-	  send -- "$PASSWORD\r"
-	  expect "Password (again):"
-	  send -- "$PASSWORD\r"
-	  send -- "\r"
-	  expect eof
-	DONE
-	USERNAME="username"
-	PASSWORD="password"
-	write_config
+		  expect "Password:"
+		  send -- "$PASSWORD\r"
+		  expect "Password (again):"
+		  send -- "$PASSWORD\r"
+		  send -- "\r"
+		  expect eof
+		DONE
+	fi
+}
+
+webvirtmgr_changepassword()
+{
+	if [ ! "$PASSWORD" ]; then
+		echo "Blank Passwords not Allowed!!...."
+		sleep 2
+	else
+		echo "Changing Password for $USERNAME..."
+		sleep 1
+		expect <<- DONE
+		  set timeout -1
+
+		  spawn  $INSTALLDIR/manage.py changepassword $USERNAME
+		  match_max 100000
+
+		  expect "Password:"
+		  send -- "$PASSWORD\r"
+		  expect "Password (again):"
+		  send -- "$PASSWORD\r"
+		  send -- "\r"
+		  expect eof
+		DONE
+	fi
 }
 
 webvirtmgr_curver()
@@ -366,11 +391,10 @@ webvirtmgr_curver()
 	# This gets the current version installed
 	cd "$INSTALLDIR"
 	
-	CURVER=`git rev-list --tags -n 1`	
-	CURTAG=`git name-rev $CURVER --tags --name-only`	
+	CURVER=$(git describe --tags)
 	cd /
 
-	echo "$CURTAG"
+	echo "$CURVER"
 }
 
 webvirtmgr_storagesize() 
@@ -426,16 +450,19 @@ case "$1" in
 		webvirtmgr_restart
 	;;
 	'enable')
-		webvirtmgr_enable $2 $3 $4 $5 $6 
+		webvirtmgr_enable $2 $3 $4 $5 $6 $7
 	;;
 	'disable')
-		webvirtmgr_disable $2 $3 $4 $5 $6 
+		webvirtmgr_disable $2 $3 $4 $5 $6 $7
 	;;
 	'install')
 		webvirtmgr_install
 	;;
 	'createsuperuser')
 		webvirtmgr_createsuperuser
+	;;
+	'changepassword')
+		webvirtmgr_changepassword
 	;;
 	'update')
 		webvirtmgr_update $2
@@ -453,7 +480,7 @@ case "$1" in
 		webvirtmgr_curver
 	;;
 	*)
-	echo "usage $0 start|stop|restart|enable|disable|install|createsuperuser|update|storagesize|datacheck|currentversion"
+	echo "usage $0 start|stop|restart|enable|disable|install|createsuperuser|changepassword|update|storagesize|datacheck|currentversion"
 esac
 ]]>
 </INLINE>
@@ -542,8 +569,8 @@ border-collapse: separate;
 #title {
 	margin-top: 15px;
 	margin-bottom: 20px;
-	height: 35px;
-	line-height: 35px;
+	height: 25px;
+	line-height: 25px;
 	-webkit-border-top-left-radius: 5px;
 	-webkit-border-top-right-radius: 5px;
 	-webkit-border-bottom-left-radius: 0;
@@ -794,29 +821,24 @@ if ($webvirtmgr_installed=="yes") {
 			</tr>
 			<tr><td colspan="2"><div style="background-color:#FFFFFF;border:1px solid #000000;height:1px;width:100%;font-size:8px;"> </div></td></tr>
 			<tr>
-				<?if ($webvirtmgr_installed=="yes"):?>
-					<td>
-						<input type="hidden" name="arg5" value="<?=$webvirtmgr_username;?>">
-					</td>
-				<?else:?>
 					<td>Username:</td>
 					<td>
-						<input type="text" name="arg5" value="<?=$webvirtmgr_username;?>">
+						<input type="text" name="arg5" value="">
 					</td>
-				<?endif;?>
 			</tr>
 			<tr>
-				<?if ($webvirtmgr_installed=="yes"):?>
-					<td>
-						<input type="hidden" name="arg6" value="<?=$webvirtmgr_password;?>">
-					</td>
-
-				<?else:?>
 					<td>Password:</td>
 					<td>
-						<input type="password" name="arg6" value="<?=$webvirtmgr_password;?>">
+						<input type="password" name="arg6" value="">
 					</td>
-				<?endif;?>
+			</tr>
+			<tr>
+					<td>Create User:
+						<input type="radio" name="arg7" value="create">
+					</td>
+					<td>Change Password:
+						<input type="radio" name="arg7" value="change">
+					</td>
 			</tr>
 		</table>
 		<div align="center">
@@ -837,6 +859,7 @@ function checkRUNNING(form)
 		form.arg4.readOnly = true;
 		form.arg5.readOnly = true;
 		form.arg6.readOnly = true;
+		form.arg7.readOnly = true;
 		form.runas.disabled = true;
    } 
    else
@@ -846,6 +869,7 @@ function checkRUNNING(form)
 		form.arg4.readOnly = (form.arg1.value == "enable");
 		form.arg5.readOnly = (form.arg1.value == "enable");
 		form.arg6.readOnly = (form.arg1.value == "enable");
+		form.arg7.readOnly = (form.arg1.value == "enable");
 		form.runas.disabled = (form.arg1.value == "enable");
    }
 }
@@ -878,18 +902,21 @@ function verifyDATA(form)
 		form.arg4.value = "nobody";
 	}
 	if (form.arg5.value == ""){
-		form.arg5.value = "username";
+		form.arg5.value = "";
 	}
 	if (form.arg6.value == ""){
-		form.arg6.value = "password";
+		form.arg6.value = "";
 	}
-
+	if (form.arg7.value == ""){
+		form.arg7.value = "";
+	}
 	form.arg1.value = form.arg1.value.replace(/ /g,"_");
 	form.arg2.value = form.arg2.value.replace(/ /g,"_");
 	form.arg3.value = form.arg3.value.replace(/ /g,"_");
 	form.arg4.value = form.arg4.value.replace(/ /g,"_");
 	form.arg5.value = form.arg5.value.replace(/ /g,"_");
 	form.arg6.value = form.arg6.value.replace(/ /g,"_");
+	form.arg7.value = form.arg7.value.replace(/ /g,"_");
 }
 
 function isNumber(n) {
