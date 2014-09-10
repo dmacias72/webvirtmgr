@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "webvirtmgr">
 <!ENTITY author    "dmacias">
-<!ENTITY version   "2014.09.08">
+<!ENTITY version   "2014.09.09">
 <!ENTITY category  "VM Support">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.plg">
 ]>
@@ -65,8 +65,8 @@ rm -f /tmp/plugin-prepare
 <MD5>ba1415d7928ade48de4d17c74d65a7a1</MD5>
 </FILE>
 
-<FILE Name="/boot/packages/pip-1.5.6-x86_64-1_uqv.txz" Run="upgradepkg --install-new">
-<URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/pip-1.5.6-x86_64-1_uqv.txz</URL>
+<FILE Name="/boot/packages/webvirtmgr-site-packages-x86-64-1.txz" Run="upgradepkg --install-new">
+<URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr-site-packages-x86-64-1.txz</URL>
 </FILE>
 
 <FILE Name="/boot/packages/pysetuptools-3.6-x86_64-1ponce.txz" Run="upgradepkg --install-new">
@@ -77,10 +77,6 @@ rm -f /tmp/plugin-prepare
 <FILE Name="/boot/packages/git-1.8.4-x86_64-1.txz" Run="upgradepkg --install-new">
 <URL>https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/git-1.8.4-x86_64-1.txz</URL>
 <MD5>e24d44ec30e7afc16c5509c4d9446140</MD5>
-</FILE>
-
-<FILE Name="/boot/config/plugins/&name;/requirements.txt">
-<URL>https://raw.githubusercontent.com/retspen/webvirtmgr/master/requirements.txt</URL>
 </FILE>
 
 <FILE Name="/boot/config/plugins/&name;/webvirtmgr.png">
@@ -230,8 +226,12 @@ webvirtmgr_update()
 	RUNSTATUS="$1"
 	webvirtmgr_stop
 	sleep 1
-	webvirtmgr_install
+	echo "Updating Web Virtual Manager"
+	cd $INSTALLDIR
+	git remote update
+	git pull
 	sleep 1
+	cd /
 	if [ "$RUNSTATUS" == "Running" ]; then
 		webvirtmgr_start
 	fi
@@ -774,6 +774,12 @@ if ($webvirtmgr_installed=="yes") {
 		<span class="left">Information:&#32;<img src='/plugins/webvirtmgr/information.png'></span>
 	</div>
 	<? if ($webvirtmgr_installed=="yes"): ?>  
+		<div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
+			<form name="webvirtmgr_update" method="POST" action="/update.htm" target="progressFrame">
+				<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr update <?=$webvirtmgr_updatestatus?>">          
+				<input type="submit" name="runCmd" value="Update">
+			</form>
+		</div>
 		<?=$webvirtmgr_storagesize?>
 		<?=$webvirtmgr_datacheck?>
 	<? endif; ?>
@@ -982,7 +988,6 @@ Install script.
 <![CDATA[
 # include our config vars
 source /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
-sudo pip install -q -r /boot/config/plugins/webvirtmgr/requirements.txt
 rm /tmp/webvirtmgr-install
 ]]>
 </INLINE>
