@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "webvirtmgr">
 <!ENTITY author    "dmacias">
-<!ENTITY version   "2014.09.11">
+<!ENTITY version   "2014.09.12">
 <!ENTITY category  "VM Support">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.plg">
 ]>
@@ -690,13 +690,13 @@ else
 if (isset($webvirtmgr_cfg['USERNAME']))
 	$webvirtmgr_username = $webvirtmgr_cfg['USERNAME'];
 else
-	$webvirtmgr_username = "username";
+	$webvirtmgr_username = "";
 
 # Password Check Status Variable
 if (isset($webvirtmgr_cfg['PASSWORD']))
 	$webvirtmgr_password = $webvirtmgr_cfg['PASSWORD'];
 else
-	$webvirtmgr_password = "password";
+	$webvirtmgr_password = "";
 
 # -------------------------------------------------------------------------
 ## Check is program is installed and running to get extra information
@@ -950,6 +950,7 @@ function isNumber(n) {
 }
 
 checkUSER(document.webvirtmgr_settings);
+checkUSERNAME(document.webvirtmgr_settings);
 </script>
 ]]>
 </INLINE>
