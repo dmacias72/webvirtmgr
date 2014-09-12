@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "webvirtmgr">
 <!ENTITY author    "dmacias">
-<!ENTITY version   "2014.09.09">
+<!ENTITY version   "2014.09.11">
 <!ENTITY category  "VM Support">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.plg">
 ]>
@@ -716,9 +716,12 @@ if ($webvirtmgr_installed=="yes") {
 	$webvirtmgr_datacheck = shell_exec ( "/etc/rc.d/rc.webvirtmgr datacheck" );
 
 	# Get current installed version of the program
-	$webvirtmgr_curversion = trim(shell_exec( "/etc/rc.d/rc.webvirtmgr currentversion" ));
+	$webvirtmgr_curversion = trim ( shell_exec ( "/etc/rc.d/rc.webvirtmgr currentversion" ) );
 	if ($webvirtmgr_curversion == "")
 		$webvirtmgr_curversion = "couldn't determine the WebVirtMgr version"; 
+	$webvirtmgr_database = rtrim ( shell_exec ( "sqlite3 $webvirtmgr_installdir/webvirtmgr.sqlite3 'select username from auth_user' | awk '{printf \"%s,\",$1,$2 }'" ) , "," );
+	if ($webvirtmgr_database != "") 	
+		$webvirtmgr_userarray = explode ( "," , "$webvirtmgr_database" );
 }
 
 ?>
@@ -789,7 +792,6 @@ if ($webvirtmgr_installed=="yes") {
 </div>
 
 
-
 <div style="width: 49%; float:right">
 	<div id="title">
 		<span class="left">Configuration:&#32;<img src='/plugins/webvirtmgr/new_config.png'></span>
@@ -826,10 +828,22 @@ if ($webvirtmgr_installed=="yes") {
 				</td>
 			</tr>
 			<tr><td colspan="2"><div style="background-color:#FFFFFF;border:1px solid #000000;height:1px;width:100%;font-size:8px;"> </div></td></tr>
+		<?if ($webvirtmgr_installed=="yes"):?>
 			<tr>
 					<td>Username:</td>
 					<td>
-						<input type="text" name="arg5" value="">
+					<select name="username" id="UsernameSelect" size="1" onChange="checkUSERNAME(this.form);">
+						<option value="new" >new</option>
+						<?php
+
+						foreach ($webvirtmgr_userarray as $webvirtmgr_username)
+						{
+						echo "<option value = $webvirtmgr_username>$webvirtmgr_username</option>";
+						}
+						?>
+					</select>
+					<input type="text" name="arg5" style="width:62%" maxlength="40" value="">
+					<input type="hidden" name="arg7" value="create">
 					</td>
 			</tr>
 			<tr>
@@ -838,21 +852,13 @@ if ($webvirtmgr_installed=="yes") {
 						<input type="password" name="arg6" value="">
 					</td>
 			</tr>
-			<tr>
-					<td>Create User:
-						<input type="radio" name="arg7" value="create">
-					</td>
-					<td>Change Password:
-						<input type="radio" name="arg7" value="change">
-					</td>
-			</tr>
+		<? endif; ?>
 		</table>
 		<div align="center">
 			<input type="submit" name="runCmd" value="Apply" style="margin-bottom:8px" onClick="verifyDATA(this.form);">
 			<button type="button" style="margin-bottom:35px" onClick="done();">Done</button>
 		</div>
-	</form>
-	<br />
+	<br/>
 </div>
 
 <script type="text/javascript">
@@ -888,6 +894,20 @@ function checkUSER(form)
 	} else {
 		form.arg4.value = "<?=$webvirtmgr_runas;?>";
 		form.arg4.type = "text";
+	}
+}
+
+function checkUSERNAME(form)
+{
+	if (form.username.selectedIndex < 1 ) {
+		form.arg5.value = "";
+		form.arg5.type = "text";
+		form.arg7.value = "create";
+
+	} else {
+		form.arg5.value = form.username.options[form.username.selectedIndex].value;
+		form.arg5.type = "hidden";
+		form.arg7.value = "change";
 	}
 }
 
