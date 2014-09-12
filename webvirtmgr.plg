@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "webvirtmgr">
 <!ENTITY author    "dmacias">
-<!ENTITY version   "2014.09.12">
+<!ENTITY version   "2014.09.12a">
 <!ENTITY category  "VM Support">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.plg">
 ]>
@@ -810,11 +810,11 @@ if ($webvirtmgr_installed=="yes") {
 			</tr>
 			<tr>
 				<td>Install directory:</td>
-				<td><input type="text" name="arg2" maxlength="60" value="<?=$webvirtmgr_installdir;?>"></td>
+				<td><input type="text" name="arg2" maxlength="60" value="<?=$webvirtmgr_installdir;?>" placeholder="ie. /mnt/cache/appdata for persistent data"></td>
 			</tr>
 			<tr>
 				<td>Port:</td>
-				<td><input type="text" name="arg3" maxlength="40" value="<?=$webvirtmgr_port;?>"></td>
+				<td><input type="text" name="arg3" maxlength="40" value="<?=$webvirtmgr_port;?>" placeholder="Default Port is 8000"></td>
 			</tr>
 			<tr>
 				<td>Run as user:</td>
@@ -902,11 +902,14 @@ function checkUSERNAME(form)
 	if (form.username.selectedIndex < 1 ) {
 		form.arg5.value = "";
 		form.arg5.type = "text";
+		form.arg5.placeholder = "Enter New User";
+		form.arg6.placeholder = "Enter Password for New User";
 		form.arg7.value = "create";
 
 	} else {
 		form.arg5.value = form.username.options[form.username.selectedIndex].value;
 		form.arg5.type = "hidden";
+		form.arg6.placeholder = "Enter New Password for Selected User";
 		form.arg7.value = "change";
 	}
 }
