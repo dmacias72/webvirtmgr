@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "webvirtmgr">
 <!ENTITY author    "dmacias">
-<!ENTITY version   "2014.09.12c">
+<!ENTITY version   "2014.09.12d">
 <!ENTITY category  "VM Support">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.plg">
 ]>
@@ -103,8 +103,7 @@ SERVICE="disable"
 INSTALLDIR="/usr/local/webvirtmgr"
 PORT="8000"
 RUNAS="nobody"
-USERNAME="username"
-PASSWORD="password"
+SHOWLOGIN="yes"
 ]]>
 </INLINE>
 </FILE>
@@ -121,6 +120,7 @@ CFGFILE=/boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 [ ! `cat "$CFGFILE" | grep RUNAS` ] && echo "RUNAS=\"nobody\"" >> "$CFGFILE"
 [ ! `cat "$CFGFILE" | grep USERNAME` ] && echo "USERNAME=\"yes\"" >> "$CFGFILE"
 [ ! `cat "$CFGFILE" | grep PASSWORD` ] && echo "PASSWORD=\"yes\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep SHOWLOGIN` ] && echo "SHOWLOGIN=\"yes\"" >> "$CFGFILE"
 rm /tmp/hp-chkconf
 ]]>
 </INLINE>
@@ -246,17 +246,26 @@ write_config()
 	echo "INSTALLDIR=\"$INSTALLDIR\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 	echo "PORT=\"$PORT\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 	echo "RUNAS=\"$RUNAS\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "SHOWLOGIN=\"$SHOWLOGIN\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 	sleep 1
 }
 
 webvirtmgr_change_settings()
 {
 	echo "Applying Settings..."
-	INSTALLDIR="$1"
+	if [ "$INSTALLDIR" == "$1" ]; then
+		RESTARTSERVICE="no"
+		INSTALLDIR="$1"
+	else
+		RESTARTSERVICE="yes"
+		INSTALLDIR="$1"
+	fi
 
 	PORT="$2"
 
-	RUNAS="$3"
+	SHOWLOGIN="$3"
+
+	RUNAS="$4"
 
 	# create webvirtmgr user if necessary
 	if [[ "$RUNAS" != "nobody" && "$RUNAS" != "root" ]]; then
@@ -273,9 +282,9 @@ webvirtmgr_change_settings()
 		fi
 	fi
 
-	USERNAME="$4"
-	PASSWORD="$5"
-	USERPASS="$6"
+	USERNAME="$5"
+	PASSWORD="$6"
+	USERPASS="$7"
 
 	if [ "$USERPASS" == "create" ]; then
 			echo "Creating new user $USERNAME..."
@@ -293,14 +302,18 @@ webvirtmgr_change_settings()
 webvirtmgr_enable()
 {
 	SERVICE=enable
-	webvirtmgr_change_settings $1 $2 $3 $4 $5 $6
+	webvirtmgr_change_settings $1 $2 $3 $4 $5 $6 $7
 	write_config
+	if [ "$RESTARTSERVICE" == "yes" ]; then
+		webvirtmgr_restart
+	fi
 }
 
 webvirtmgr_disable()
 {
+	webvirtmgr_stop
 	SERVICE=disable
-	webvirtmgr_change_settings $1 $2 $3 $4 $5 $6
+	webvirtmgr_change_settings $1 $2 $3 $4 $5 $6 $7
 	write_config
 }
 
@@ -450,10 +463,10 @@ case "$1" in
 		webvirtmgr_restart
 	;;
 	'enable')
-		webvirtmgr_enable $2 $3 $4 $5 $6 $7
+		webvirtmgr_enable $2 $3 $4 $5 $6 $7 $8
 	;;
 	'disable')
-		webvirtmgr_disable $2 $3 $4 $5 $6 $7
+		webvirtmgr_disable $2 $3 $4 $5 $6 $7 $8
 	;;
 	'install')
 		webvirtmgr_install
@@ -664,15 +677,7 @@ else
 	$webvirtmgr_installdir = "/usr/local/webvirtmgr";
 
 # Port Number Variable
-if (file_exists($webvirtmgr_configdir . "/config.ini") && shell_exec("grep -m 1 '^http_port =' " . $webvirtmgr_configdir . "/config.ini")) {
-	$webvirtmgr_port = trim(shell_exec( "grep -m 1 '^http_port =' " . $webvirtmgr_configdir . "/config.ini | sed -n 's!http_port = \([0-9][0-9]*\)!\\1!p'" ));
-	if (is_numeric($webvirtmgr_port)) {
-		if ($webvirtmgr_port < 0 || $webvirtmgr_port > 65535)
-			$webvirtmgr_port = "8000";
-	} else {
-		$webvirtmgr_port = "8000";
-	}
-} else if (isset($webvirtmgr_cfg['PORT']) && is_numeric($webvirtmgr_cfg['PORT'])) {
+if (isset($webvirtmgr_cfg['PORT']) && is_numeric($webvirtmgr_cfg['PORT'])) {
 	$webvirtmgr_port = $webvirtmgr_cfg['PORT'];
 	if ($webvirtmgr_port < 0 || $webvirtmgr_port > 65535)
 		$webvirtmgr_port = "8000";
@@ -697,6 +702,13 @@ if (isset($webvirtmgr_cfg['PASSWORD']))
 	$webvirtmgr_password = $webvirtmgr_cfg['PASSWORD'];
 else
 	$webvirtmgr_password = "";
+
+# Full Status Variable
+if (isset($webvirtmgr_cfg['SHOWLOGIN']) && ($webvirtmgr_cfg['SHOWLOGIN'] == "yes" || $webvirtmgr_cfg['SHOWLOGIN'] == "no"))
+	$webvirtmgr_login = $webvirtmgr_cfg['SHOWLOGIN'];
+else
+	$webvirtmgr_login = "yes";
+
 
 # -------------------------------------------------------------------------
 ## Check is program is installed and running to get extra information
@@ -723,9 +735,7 @@ if ($webvirtmgr_installed=="yes") {
 	if ($webvirtmgr_database != "") 	
 		$webvirtmgr_userarray = explode ( "," , "$webvirtmgr_database" );
 }
-
 ?>
-
 <div style="width: 49%; float:left">
 	<div id="title">
 		<span class="left">Status:&#32;<img src='/plugins/webvirtmgr/device_status.png'>
@@ -817,14 +827,20 @@ if ($webvirtmgr_installed=="yes") {
 				<td><input type="text" name="arg3" maxlength="40" value="<?=$webvirtmgr_port;?>" placeholder="Default Port is 8000"></td>
 			</tr>
 			<tr>
-				<td>Run as user:</td>
-				<td>
+				<td>Show Login:
+					<select id="showlogin" name="showlogin" size="1" onChange="form.arg4.value = form.showlogin.value; toggleDivDisplay('showlogin', 'logindisplay', 'no');">
+	        			      <?=mk_option($webvirtmgr_login, "yes", "Yes");?>
+	        			      <?=mk_option($webvirtmgr_login, "no", "No");?>
+					</select>
+					<input type="hidden" name="arg4" value="<?=$webvirtmgr_login;?>">     
+				</td>
+				<td><b>Run as User:</b>
 					<select name="runas" size="1" onChange="checkUSER(this.form);">
 						<?=mk_option($webvirtmgr_runas, "nobody", "nobody");?>
 						<?=mk_option($webvirtmgr_runas, "root", "root");?>
 						<option value='other' <?=($webvirtmgr_runas != "root" && $webvirtmgr_runas != "nobody") ? "selected=yes":"";?>>other</option>
 					</select>
-					<input type="hidden" name="arg4" style="width:66%" maxlength="40" value="<?=$webvirtmgr_runas;?>">
+					<input type="hidden" name="arg5" style="width:44%" maxlength="40" value="<?=$webvirtmgr_runas;?>">
 				</td>
 			</tr>
 			<tr><td colspan="2"><div style="background-color:#FFFFFF;border:1px solid #000000;height:1px;width:100%;font-size:8px;"> </div></td></tr>
@@ -842,14 +858,14 @@ if ($webvirtmgr_installed=="yes") {
 						}
 						?>
 					</select>
-					<input type="text" name="arg5" style="width:62%" maxlength="40" value="">
-					<input type="hidden" name="arg7" value="create">
+					<input type="text" name="arg6" style="width:68%" maxlength="40" value="" placeholder = "Enter New User">
+					<input type="hidden" name="arg8" value="create">
 					</td>
 			</tr>
 			<tr>
 					<td>Password:</td>
 					<td>
-						<input type="password" name="arg6" value="">
+						<input type="password" name="arg7" value="" placeholder = "Enter Password for New User">
 					</td>
 			</tr>
 		<? endif; ?>
@@ -858,9 +874,17 @@ if ($webvirtmgr_installed=="yes") {
 			<input type="submit" name="runCmd" value="Apply" style="margin-bottom:8px" onClick="verifyDATA(this.form);">
 			<button type="button" style="margin-bottom:35px" onClick="done();">Done</button>
 		</div>
-	<br/>
 </div>
-
+	<?if ($webvirtmgr_installed=="yes"):?>
+		<?if ($webvirtmgr_running=="yes"):?>
+			<div style="width: 100%; float:left" id="logindisplay">
+				<table>
+					<tr><td colspan="2"><div style="background-color:#FFFFFF;border:1px solid #000000;height:1px;width:100%;font-size:8px;"> </div></td></tr>
+					<tr><td><iframe src='http://<?=$var['NAME'];?>:<?=$webvirtmgr_port;?>' name=webvirtmgr width="1024" height="768"></iframe></td></tr>
+				</table>
+			</div>
+		<? endif; ?>
+	<? endif; ?>
 <script type="text/javascript">
 function checkRUNNING(form)
 {
@@ -872,7 +896,9 @@ function checkRUNNING(form)
 		form.arg5.readOnly = true;
 		form.arg6.readOnly = true;
 		form.arg7.readOnly = true;
+		form.arg8.readOnly = true;
 		form.runas.disabled = true;
+		form.showlogin.disabled = true;
    } 
    else
    {
@@ -882,35 +908,38 @@ function checkRUNNING(form)
 		form.arg5.readOnly = (form.arg1.value == "enable");
 		form.arg6.readOnly = (form.arg1.value == "enable");
 		form.arg7.readOnly = (form.arg1.value == "enable");
+		form.arg8.readOnly = (form.arg1.value == "enable");
 		form.runas.disabled = (form.arg1.value == "enable");
+		form.showlogin.disabled = (form.arg1.value == "enable");
    }
 }
  
 function checkUSER(form)
 {
 	if (form.runas.selectedIndex < 2 ) {
-		form.arg4.value = form.runas.options[form.runas.selectedIndex].value;
-		form.arg4.type = "hidden";
+		form.arg5.value = form.runas.options[form.runas.selectedIndex].value;
+		form.arg5.type = "hidden";
 	} else {
-		form.arg4.value = "<?=$webvirtmgr_runas;?>";
-		form.arg4.type = "text";
+		form.arg5.value = "<?=$webvirtmgr_runas;?>";
+		form.arg5.type = "text";
+		form.arg5.placeholder = "Enter Run As User";
 	}
 }
 
 function checkUSERNAME(form)
 {
 	if (form.username.selectedIndex < 1 ) {
-		form.arg5.value = "";
-		form.arg5.type = "text";
-		form.arg5.placeholder = "Enter New User";
-		form.arg6.placeholder = "Enter Password for New User";
-		form.arg7.value = "create";
+		form.arg6.value = "";
+		form.arg6.type = "text";
+		form.arg6.placeholder = "Enter New User";
+		form.arg7.placeholder = "Enter Password for New User";
+		form.arg8.value = "create";
 
 	} else {
-		form.arg5.value = form.username.options[form.username.selectedIndex].value;
-		form.arg5.type = "hidden";
-		form.arg6.placeholder = "Enter New Password for Selected User";
-		form.arg7.value = "change";
+		form.arg6.value = form.username.options[form.username.selectedIndex].value;
+		form.arg6.type = "hidden";
+		form.arg7.placeholder = "Enter New Password for Selected User";
+		form.arg8.value = "change";
 	}
 }
 
@@ -928,16 +957,19 @@ function verifyDATA(form)
 		form.arg3.value = "8000";
 	}
 	if (form.arg4.value == ""){
-		form.arg4.value = "nobody";
+		form.arg4.value = "yes";
 	}
 	if (form.arg5.value == ""){
-		form.arg5.value = "";
+		form.arg5.value = "nobody";
 	}
 	if (form.arg6.value == ""){
 		form.arg6.value = "";
 	}
 	if (form.arg7.value == ""){
 		form.arg7.value = "";
+	}
+	if (form.arg8.value == ""){
+		form.arg8.value = "";
 	}
 	form.arg1.value = form.arg1.value.replace(/ /g,"_");
 	form.arg2.value = form.arg2.value.replace(/ /g,"_");
@@ -946,14 +978,26 @@ function verifyDATA(form)
 	form.arg5.value = form.arg5.value.replace(/ /g,"_");
 	form.arg6.value = form.arg6.value.replace(/ /g,"_");
 	form.arg7.value = form.arg7.value.replace(/ /g,"_");
+	form.arg8.value = form.arg8.value.replace(/ /g,"_");
 }
 
 function isNumber(n) {
 	return !isNaN(parseFloat(n)) && isFinite(n);
 }
 
+function toggleDivDisplay(ddlID, divID, hidevalue) { 
+  if (document.getElementById(ddlID).value == hidevalue) 
+    document.getElementById(divID).style.visibility = 'hidden';
+  else 
+    document.getElementById(divID).style.visibility = 'visible';
+ }
+
+
+toggleDivDisplay('showlogin', 'logindisplay', 'no');
+
 checkUSER(document.webvirtmgr_settings);
 checkUSERNAME(document.webvirtmgr_settings);
+document.webvirtmgr_settings.form.arg4.value = document.webvirtmgr_settings.form.showlogin.value;
 </script>
 ]]>
 </INLINE>
