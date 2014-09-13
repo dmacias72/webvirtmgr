@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "webvirtmgr">
 <!ENTITY author    "dmacias">
-<!ENTITY version   "2014.09.12d">
+<!ENTITY version   "2014.09.13">
 <!ENTITY category  "VM Support">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.plg">
 ]>
@@ -130,7 +130,7 @@ rm /tmp/hp-chkconf
 <INLINE>
 <![CDATA[
 #!/bin/sh
-# start|stop|restart|enable|disable|install|createsuperuser|changepassword|update|storagesize|datacheck|currentversion webvirtmgr.
+# start|stop|restart|enable|disable|install|createsuperuser|changepassword|update|storagesize|datacheck webvirtmgr.
 
 webvirtmgr_start()
 {
@@ -228,7 +228,7 @@ webvirtmgr_update()
 	sleep 1
 	echo "Updating Web Virtual Manager"
 	cd $INSTALLDIR
-	git remote update
+#	git remote update
 	git pull
 	sleep 1
 	cd /
@@ -399,17 +399,6 @@ webvirtmgr_changepassword()
 	fi
 }
 
-webvirtmgr_curver()
-{
-	# This gets the current version installed
-	cd "$INSTALLDIR"
-	
-	CURVER=$(git describe --tags)
-	cd /
-
-	echo "$CURVER"
-}
-
 webvirtmgr_storagesize() 
 {
 	# Get size of Install directory
@@ -489,11 +478,8 @@ case "$1" in
 	'buttonstart')
 		webvirtmgr_buttonstart
 	;;
-	'currentversion')
-		webvirtmgr_curver
-	;;
 	*)
-	echo "usage $0 start|stop|restart|enable|disable|install|createsuperuser|changepassword|update|storagesize|datacheck|currentversion"
+	echo "usage $0 start|stop|restart|enable|disable|install|createsuperuser|changepassword|update|storagesize|datacheck"
 esac
 ]]>
 </INLINE>
@@ -727,10 +713,18 @@ if ($webvirtmgr_installed=="yes") {
 	$webvirtmgr_storagesize = shell_exec ( "/etc/rc.d/rc.webvirtmgr storagesize" );
 	$webvirtmgr_datacheck = shell_exec ( "/etc/rc.d/rc.webvirtmgr datacheck" );
 
+	# Get online status of the program
+	$webvirtmgr_gitmsg = shell_exec ( "git --git-dir=$webvirtmgr_installdir/.git --work-tree=$webvirtmgr_installdir status --untracked-files=no | grep  \"commits\" | sed -e 's/^# *//'" );
+	$webvirtmgr_gitstatus = "behind";
+	if ($webvirtmgr_gitmsg == "")
+		$webvirtmgr_gitstatus = "updated";
+
 	# Get current installed version of the program
-	$webvirtmgr_curversion = trim ( shell_exec ( "/etc/rc.d/rc.webvirtmgr currentversion" ) );
+	$webvirtmgr_curversion = trim ( shell_exec ( "git --git-dir=$webvirtmgr_installdir/.git --work-tree=$webvirtmgr_installdir describe --tags" ) );
 	if ($webvirtmgr_curversion == "")
-		$webvirtmgr_curversion = "couldn't determine the WebVirtMgr version"; 
+		$webvirtmgr_curversion = "couldn't determine the WebVirtMgr version";
+
+	# Get usernames from webvirtmgr database 
 	$webvirtmgr_database = rtrim ( shell_exec ( "sqlite3 $webvirtmgr_installdir/webvirtmgr.sqlite3 'select username from auth_user' | awk '{printf \"%s,\",$1,$2 }'" ) , "," );
 	if ($webvirtmgr_database != "") 	
 		$webvirtmgr_userarray = explode ( "," , "$webvirtmgr_database" );
@@ -787,12 +781,17 @@ if ($webvirtmgr_installed=="yes") {
 		<span class="left">Information:&#32;<img src='/plugins/webvirtmgr/information.png'></span>
 	</div>
 	<? if ($webvirtmgr_installed=="yes"): ?>  
-		<div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
-			<form name="webvirtmgr_update" method="POST" action="/update.htm" target="progressFrame">
-				<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr update <?=$webvirtmgr_updatestatus?>">          
-				<input type="submit" name="runCmd" value="Update">
-			</form>
-		</div>
+		<? if ($webvirtmgr_gitstatus=="behind"): ?>  
+			<p style="color:red;margin-left:10px;margin-right:10px;"><?=$webvirtmgr_gitmsg?></p>
+			<div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
+				<form name="webvirtmgr_update" method="POST" action="/update.htm" target="progressFrame">
+					<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr update <?=$webvirtmgr_updatestatus?>">          
+					<input type="submit" name="runCmd" value="Update">
+				</form>
+			</div>
+		<?else:?>
+			<p style="color:green;margin-left:10px;margin-right:10px;">Web Virtual Manager is up to date.</p>
+		<? endif; ?>
 		<?=$webvirtmgr_storagesize?>
 		<?=$webvirtmgr_datacheck?>
 	<? endif; ?>
