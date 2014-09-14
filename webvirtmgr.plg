@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name      "webvirtmgr">
 <!ENTITY author    "dmacias">
-<!ENTITY version   "2014.09.13">
+<!ENTITY version   "2014.09.13a">
 <!ENTITY category  "VM Support">
 <!ENTITY pluginURL "https://raw.githubusercontent.com/dmacias72/webvirtmgr_unRAID_6/master/webvirtmgr.plg">
 ]>
@@ -246,7 +246,7 @@ write_config()
 	echo "INSTALLDIR=\"$INSTALLDIR\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 	echo "PORT=\"$PORT\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 	echo "RUNAS=\"$RUNAS\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
-	echo "SHOWLOGIN=\"$SHOWLOGIN\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "SHOWDISPLAY=\"$SHOWDISPLAY\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 	sleep 1
 }
 
@@ -263,7 +263,7 @@ webvirtmgr_change_settings()
 
 	PORT="$2"
 
-	SHOWLOGIN="$3"
+	SHOWDISPLAY="$3"
 
 	RUNAS="$4"
 
@@ -568,8 +568,8 @@ border-collapse: separate;
 #title {
 	margin-top: 15px;
 	margin-bottom: 20px;
-	height: 25px;
-	line-height: 25px;
+	height: 35px;
+	line-height: 35px;
 	-webkit-border-top-left-radius: 5px;
 	-webkit-border-top-right-radius: 5px;
 	-webkit-border-bottom-left-radius: 0;
@@ -689,11 +689,11 @@ if (isset($webvirtmgr_cfg['PASSWORD']))
 else
 	$webvirtmgr_password = "";
 
-# Full Status Variable
-if (isset($webvirtmgr_cfg['SHOWLOGIN']) && ($webvirtmgr_cfg['SHOWLOGIN'] == "yes" || $webvirtmgr_cfg['SHOWLOGIN'] == "no"))
-	$webvirtmgr_login = $webvirtmgr_cfg['SHOWLOGIN'];
+# Show Web Virtual Manager Display Variable
+if (isset($webvirtmgr_cfg['SHOWDISPLAY']) && ($webvirtmgr_cfg['SHOWDISPLAY'] == "yes" || $webvirtmgr_cfg['SHOWDISPLAY'] == "no"))
+	$webvirtmgr_showdisplay = $webvirtmgr_cfg['SHOWDISPLAY'];
 else
-	$webvirtmgr_login = "yes";
+	$webvirtmgr_showdisplay = "yes";
 
 
 # -------------------------------------------------------------------------
@@ -714,10 +714,11 @@ if ($webvirtmgr_installed=="yes") {
 	$webvirtmgr_datacheck = shell_exec ( "/etc/rc.d/rc.webvirtmgr datacheck" );
 
 	# Get online status of the program
-	$webvirtmgr_gitmsg = shell_exec ( "git --git-dir=$webvirtmgr_installdir/.git --work-tree=$webvirtmgr_installdir status --untracked-files=no | grep  \"commits\" | sed -e 's/^# *//'" );
-	$webvirtmgr_gitstatus = "behind";
+	$webvirtmgr_gitmsg = shell_exec ( "git --git-dir=$webvirtmgr_installdir/.git --work-tree=$webvirtmgr_installdir status --untracked-files=no | grep  \"commits\" | sed -e 's/^# Your branch/WebVirtMgr/'" );
 	if ($webvirtmgr_gitmsg == "")
-		$webvirtmgr_gitstatus = "updated";
+		$webvirtmgr_gitstatus = "current";
+	else
+		$webvirtmgr_gitstatus = "update";
 
 	# Get current installed version of the program
 	$webvirtmgr_curversion = trim ( shell_exec ( "git --git-dir=$webvirtmgr_installdir/.git --work-tree=$webvirtmgr_installdir describe --tags" ) );
@@ -781,8 +782,8 @@ if ($webvirtmgr_installed=="yes") {
 		<span class="left">Information:&#32;<img src='/plugins/webvirtmgr/information.png'></span>
 	</div>
 	<? if ($webvirtmgr_installed=="yes"): ?>  
-		<? if ($webvirtmgr_gitstatus=="behind"): ?>  
-			<p style="color:red;margin-left:10px;margin-right:10px;"><?=$webvirtmgr_gitmsg?></p>
+		<? if ($webvirtmgr_gitstatus=="update"): ?>  
+			<p style="color:DarkOrange;margin-left:10px;margin-right:10px;"><?=$webvirtmgr_gitmsg?></p>
 			<div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
 				<form name="webvirtmgr_update" method="POST" action="/update.htm" target="progressFrame">
 					<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr update <?=$webvirtmgr_updatestatus?>">          
@@ -809,13 +810,15 @@ if ($webvirtmgr_installed=="yes") {
 		<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr">
 		<table class="settings">
 			<tr>
-				<td>Enable WebVirtMgr:</td>
-				<td>
-					<select name="arg1" size="1">
-						<?=mk_option($webvirtmgr_service, "disable", "No");?>
-						<?=mk_option($webvirtmgr_service, "enable", "Yes");?>
-					</select>
+				<td>Enable WebVirtMgr:
+					<input type="checkbox" name="enable" <?=($webvirtmgr_service=="enable")?"checked=\"checked\"":"";?> onChange="checkENABLE(this.form);">
+					<input type="hidden" name="arg1" value="<?=$webvirtmgr_service;?>">     
 				</td>
+				<td><b>Enable Login Display:</b>
+					<input type="checkbox" name="showdisplay" <?=($webvirtmgr_showdisplay=="yes")?"checked=\"checked\"":"";?> onChange="checkDISPLAY(this.form);">
+					<input type="hidden" name="arg4" value="<?=$webvirtmgr_showdisplay;?>">     
+				</td>
+
 			</tr>
 			<tr>
 				<td>Install directory:</td>
@@ -826,20 +829,13 @@ if ($webvirtmgr_installed=="yes") {
 				<td><input type="text" name="arg3" maxlength="40" value="<?=$webvirtmgr_port;?>" placeholder="Default Port is 8000"></td>
 			</tr>
 			<tr>
-				<td>Show Login:
-					<select id="showlogin" name="showlogin" size="1" onChange="form.arg4.value = form.showlogin.value; toggleDivDisplay('showlogin', 'logindisplay', 'no');">
-	        			      <?=mk_option($webvirtmgr_login, "yes", "Yes");?>
-	        			      <?=mk_option($webvirtmgr_login, "no", "No");?>
-					</select>
-					<input type="hidden" name="arg4" value="<?=$webvirtmgr_login;?>">     
-				</td>
-				<td><b>Run as User:</b>
-					<select name="runas" size="1" onChange="checkUSER(this.form);">
+				<td>Run as User:</td>
+					<td><select name="runas" size="1" onChange="checkUSER(this.form);">
 						<?=mk_option($webvirtmgr_runas, "nobody", "nobody");?>
 						<?=mk_option($webvirtmgr_runas, "root", "root");?>
 						<option value='other' <?=($webvirtmgr_runas != "root" && $webvirtmgr_runas != "nobody") ? "selected=yes":"";?>>other</option>
 					</select>
-					<input type="hidden" name="arg5" style="width:44%" maxlength="40" value="<?=$webvirtmgr_runas;?>">
+					<input type="hidden" name="arg5" style="width:66%" maxlength="40" value="<?=$webvirtmgr_runas;?>">
 				</td>
 			</tr>
 			<tr><td colspan="2"><div style="background-color:#FFFFFF;border:1px solid #000000;height:1px;width:100%;font-size:8px;"> </div></td></tr>
@@ -874,16 +870,18 @@ if ($webvirtmgr_installed=="yes") {
 			<button type="button" style="margin-bottom:35px" onClick="done();">Done</button>
 		</div>
 </div>
+<?if ($webvirtmgr_showdisplay=="yes"):?>
 	<?if ($webvirtmgr_installed=="yes"):?>
 		<?if ($webvirtmgr_running=="yes"):?>
-			<div style="width: 100%; float:left" id="logindisplay">
+			<div  id="webvirtmgrdisplay" style="width: 100%; float:left">
 				<table>
 					<tr><td colspan="2"><div style="background-color:#FFFFFF;border:1px solid #000000;height:1px;width:100%;font-size:8px;"> </div></td></tr>
-					<tr><td><iframe src='http://<?=$var['NAME'];?>:<?=$webvirtmgr_port;?>' name=webvirtmgr width="1024" height="768"></iframe></td></tr>
+					<tr><td><iframe src="http://<?=$var['NAME'];?>:<?=$webvirtmgr_port;?>" name="webvirtmgr" width="950" height="750" frameBorder="0"></iframe></td></tr>
 				</table>
 			</div>
 		<? endif; ?>
 	<? endif; ?>
+<? endif; ?>
 <script type="text/javascript">
 function checkRUNNING(form)
 {
@@ -897,7 +895,6 @@ function checkRUNNING(form)
 		form.arg7.readOnly = true;
 		form.arg8.readOnly = true;
 		form.runas.disabled = true;
-		form.showlogin.disabled = true;
    } 
    else
    {
@@ -909,7 +906,6 @@ function checkRUNNING(form)
 		form.arg7.readOnly = (form.arg1.value == "enable");
 		form.arg8.readOnly = (form.arg1.value == "enable");
 		form.runas.disabled = (form.arg1.value == "enable");
-		form.showlogin.disabled = (form.arg1.value == "enable");
    }
 }
  
@@ -941,7 +937,6 @@ function checkUSERNAME(form)
 		form.arg8.value = "change";
 	}
 }
-
 
 function verifyDATA(form)
 {
@@ -980,23 +975,32 @@ function verifyDATA(form)
 	form.arg8.value = form.arg8.value.replace(/ /g,"_");
 }
 
+function checkENABLE(form) {
+	if (form.enable.checked == false ) {
+		form.arg1.value = "disable";
+	} else {
+		form.arg1.value = "enable";
+	}
+}
+
+
+function checkDISPLAY(form) {
+	if (form.showdisplay.checked == false ) {
+		form.arg4.value = "no";
+	} else {
+		form.arg4.value = "yes";
+	}
+}
+
 function isNumber(n) {
 	return !isNaN(parseFloat(n)) && isFinite(n);
 }
 
-function toggleDivDisplay(ddlID, divID, hidevalue) { 
-  if (document.getElementById(ddlID).value == hidevalue) 
-    document.getElementById(divID).style.visibility = 'hidden';
-  else 
-    document.getElementById(divID).style.visibility = 'visible';
- }
-
-
-toggleDivDisplay('showlogin', 'logindisplay', 'no');
-
 checkUSER(document.webvirtmgr_settings);
 checkUSERNAME(document.webvirtmgr_settings);
-document.webvirtmgr_settings.form.arg4.value = document.webvirtmgr_settings.form.showlogin.value;
+checkENABLE(document.webvirtmgr_settings);
+checkDISPLAY(document.webvirtmgr_settings);
+
 </script>
 ]]>
 </INLINE>
