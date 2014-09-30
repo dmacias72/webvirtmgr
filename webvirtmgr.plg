@@ -99,6 +99,7 @@ The 'remove' script.
 /etc/rc.d/rc.&name; stop
 rm -rf /usr/local/emhttp/plugins/&name;
 rm -f /etc/rc.d/rc.&name;
+rm -f &plugin;/&name;-&version;.tar.gz
 </INLINE>
 </FILE>
 
