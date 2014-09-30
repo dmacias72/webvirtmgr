@@ -1,0 +1,6 @@
+#!/bin/bash
+source /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+if [ "$SERVICE" = "enable" ]; then
+	/etc/rc.d/rc.webvirtmgr start
+fi
+

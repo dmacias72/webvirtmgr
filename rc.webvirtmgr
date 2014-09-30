@@ -1,0 +1,352 @@
+#!/bin/sh
+# start|stop|restart|enable|disable|install|createsuperuser|changepassword|update|storagesize|datacheck webvirtmgr.
+
+webvirtmgr_start()
+{
+	# no-op if not enabled
+	if [ "$SERVICE" != "enable" ]; then
+		sed -i 's/disable/enable/' "$CONFIG"
+	fi
+
+	# no-op if already running
+	if [ "$(pgrep -f manage.py)" ]; then
+		echo "webvirtmgr already running."
+		return
+	fi
+
+	# if directory doesn't exist or py is not found, install it
+	if [[ "$INSTALLDIR" != "" &&  ! -e "$INSTALLDIR/manage.py" ]]; then
+		webvirtmgr_install
+	fi
+
+	echo "Starting Web Virtual Manager"
+	sleep 1
+	sudo -H -u "$RUNAS" /bin/bash -c "nohup /usr/bin/python $INSTALLDIR/manage.py runserver 0:$PORT > /dev/null 2>&1 &"	
+
+	# Checks if the app started properly or not, giving it 10 seconds to create the PID file
+	TIMER=0
+	STARTFAIL="0"
+	sleep 2
+	while [ ! "$(pgrep -f manage.py)" ]; do
+		let TIMER=$TIMER+1
+		sleep 1
+		if [ $TIMER -gt 10 ]; then
+			echo "Application did not start for some reason"
+			sleep 1
+			STARTFAIL="1"
+			break
+		fi
+	done
+
+	# Notify if start was successful or failed
+	if [ "$STARTFAIL" == "0" ]; then
+		echo "... Start OK"
+	else
+		echo "... Start Failed"
+	fi
+	sleep 1
+}
+
+webvirtmgr_stop()
+{
+	echo "Stopping Web Virtual Manager..."
+	sleep 1
+
+	# Send the kill command to gracefully shutdown
+	pkill -f manage.py 2> /dev/null
+
+	# Begin a timer for shutdown, force kill process if not shut down by end of timer
+	TIMER=0
+	while [ "$(pgrep -f manage.py)" ]; do
+		let TIMER=$TIMER+1
+		sleep 1
+		if [ $TIMER -gt 10 ]; then
+			echo "Application has not shut down yet, killing the process"
+			sleep 1
+			pkill -9 -f manage.py 2> /dev/null
+			break
+		fi
+	done
+
+	echo "... Stop OK"
+	sleep 1
+}
+
+webvirtmgr_restart()
+{
+	webvirtmgr_stop
+	sleep 1
+	webvirtmgr_start
+}
+
+webvirtmgr_buttonstart()
+{
+	CONFIG="/boot/config/plugins/webvirtmgr/webvirtmgr.cfg"
+	if [[ "CONFIG" ]]; then
+		webvirtmgr_start
+	else
+		echo "No config file found. Press reinstall the plugin."
+		sleep 3
+	fi
+}
+
+webvirtmgr_update()
+{
+	RUNSTATUS="$1"
+	webvirtmgr_stop
+	sleep 1
+	echo "Updating Web Virtual Manager"
+	cd $INSTALLDIR
+#	git remote update
+	git pull
+	sleep 1
+	cd /
+	if [ "$RUNSTATUS" == "Running" ]; then
+		webvirtmgr_start
+	fi
+}
+
+write_config()
+{
+	sleep 1
+	# Write to the config file
+	echo "# WebVirtMgr configuration:" > /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "SERVICE=\"$SERVICE\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "INSTALLDIR=\"$INSTALLDIR\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "PORT=\"$PORT\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "RUNAS=\"$RUNAS\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	echo "SHOWDISPLAY=\"$SHOWDISPLAY\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+	sleep 1
+}
+
+webvirtmgr_change_settings()
+{
+	echo "Applying Settings..."
+	if [ "$INSTALLDIR" == "$1" ]; then
+		RESTARTSERVICE="no"
+		INSTALLDIR="$1"
+	else
+		RESTARTSERVICE="yes"
+		INSTALLDIR="$1"
+	fi
+
+	PORT="$2"
+
+	SHOWDISPLAY="$3"
+
+	RUNAS="$4"
+
+	# create webvirtmgr user if necessary
+	if [[ "$RUNAS" != "nobody" && "$RUNAS" != "root" ]]; then
+		if ( ! grep -q ^$RUNAS /etc/passwd ); then
+			useradd -r -g users -d / -s /bin/false "$RUNAS" &> /dev/null
+			cp /etc/passwd /etc/shadow /boot/config
+		fi
+	fi
+
+	if [ -d "$INSTALLDIR" ]; then
+		OWNER=$(stat -c %U "$INSTALLDIR")
+		if [ "$OWNER" != "$RUNAS" ]; then
+			chown -R "$RUNAS":users "$INSTALLDIR"
+		fi
+	fi
+
+	USERNAME="$5"
+	PASSWORD="$6"
+	USERPASS="$7"
+
+	if [ "$USERPASS" == "create" ]; then
+			echo "Creating new user $USERNAME..."
+			sleep 2
+			webvirtmgr_createsuperuser
+	fi
+
+	if [ "$USERPASS" == "change" ]; then
+			echo "Changing Password for $USERNAME..."
+			sleep 2
+			webvirtmgr_changepassword
+	fi
+}
+
+webvirtmgr_enable()
+{
+	SERVICE=enable
+	webvirtmgr_change_settings $1 $2 $3 $4 $5 $6 $7
+	write_config
+	if [ "$RESTARTSERVICE" == "yes" ]; then
+		webvirtmgr_restart
+	fi
+}
+
+webvirtmgr_disable()
+{
+	webvirtmgr_stop
+	SERVICE=disable
+	webvirtmgr_change_settings $1 $2 $3 $4 $5 $6 $7
+	write_config
+}
+
+webvirtmgr_install()
+{
+	echo "Installing latest version of webvirtmgr from master..."
+	if [ ! -d "$INSTALLDIR" ]; then 
+		mkdir -p "$INSTALLDIR"
+		if [ ! -d "$INSTALLDIR" ]; then 
+			echo "Unable to create directory $INSTALLDIR, aborting installation"
+			exit 1
+		fi
+	fi
+
+	# Clone from GIT to a temp folder, then move to final install dir
+	cd /tmp
+	git clone -b master https://github.com/retspen/webvirtmgr webvirtmgr
+	cd /
+	cp -af /tmp/webvirtmgr/. "$INSTALLDIR"
+	rm -Rf /tmp/webvirtmgr
+	cp -f $INSTALLDIR/webvirtmgr/local/local_settings.py.example $INSTALLDIR/webvirtmgr/local/local_settings.py
+	/usr/bin/python $INSTALLDIR/manage.py syncdb --noinput
+	/usr/bin/python $INSTALLDIR/manage.py collectstatic --noinput
+
+	OWNER=$(stat -c %U "$INSTALLDIR")
+	if [ "$OWNER" != "$RUNAS" ]; then
+		chown -R "$RUNAS":users "$INSTALLDIR"
+	fi
+
+	# Check for installed files after extract. Display ok if successful or failed if not successful
+	if [ -f "$INSTALLDIR/manage.py" ]; then
+		echo "... Install OK"
+	else
+		echo "... Not Installed"
+	fi
+	sleep 1
+}
+
+webvirtmgr_createsuperuser()
+{
+	echo "Creating Username: $USERNAME and Password..."
+	if [ ! "$PASSWORD" ]; then
+		echo "Blank Passwords not Allowed!!...."
+		sleep 2
+	else
+		expect <<- DONE
+		  set timeout -1
+
+		  spawn  $INSTALLDIR/manage.py createsuperuser --username $USERNAME --email none
+		  match_max 100000
+
+		  expect "Password:"
+		  send -- "$PASSWORD\r"
+		  expect "Password (again):"
+		  send -- "$PASSWORD\r"
+		  send -- "\r"
+		  expect eof
+		DONE
+	fi
+}
+
+webvirtmgr_changepassword()
+{
+	if [ ! "$PASSWORD" ]; then
+		echo "Blank Passwords not Allowed!!...."
+		sleep 2
+	else
+		echo "Changing Password for $USERNAME..."
+		sleep 1
+		expect <<- DONE
+		  set timeout -1
+
+		  spawn  $INSTALLDIR/manage.py changepassword $USERNAME
+		  match_max 100000
+
+		  expect "Password:"
+		  send -- "$PASSWORD\r"
+		  expect "Password (again):"
+		  send -- "$PASSWORD\r"
+		  send -- "\r"
+		  expect eof
+		DONE
+	fi
+}
+
+webvirtmgr_storagesize() 
+{
+	# Get size of Install directory
+	if [ -d "$INSTALLDIR" ]; then
+		INSTSIZE=`du -shm "$INSTALLDIR" | cut -f1 | sed 's/[^0-9]*//g'`
+	elif [ -f "$INSTALLDIR" ]; then
+		INSTSIZE=`ls -lah --block-size=M "$INSTALLDIR" | awk '{ print $5}'`
+	else
+		INSTSIZE=0
+	fi
+
+
+	TOTALSIZE="$INSTSIZE"
+
+	# Create the HTML response - Add insatall directory
+	LINE="<p style="margin-left:10px\;margin-bottom:0px\;"><b>Total Storage Usage: $TOTALSIZE MB</b>"
+	LINE="$LINE<ul style="margin-top:0px\;"><li>Install Directory: $INSTSIZE MB</li>"
+	LINE="$LINE</ul></p>"
+	echo "$LINE"
+}
+
+webvirtmgr_datacheck() 
+{
+	if [ -e "$INSTALLDIR" ]; then
+		fs=$( stat -f -c '%T' "$INSTALLDIR" )
+		if [ "$fs" == "ramfs" ] || [ "$fs" == "tmpfs" ] || [ "$fs" == "proc" ] || [ "$fs" == "sysfs" ]; then
+			echo "<p style="color:red\;margin-left:10px\;margin-right:10px\;"><b>WARNING:</b> Your config directory is not persistent and WILL NOT survive a reboot. Please locate the directory on disk for persistency</p>"
+		elif [ "$fs" == "msdos" ]; then
+			echo "<p style="color:orange\;margin-left:10px\;margin-right:10px\;"><b>WARNING:</b> Your config directory is located on your flash drive. This will decrease your flash drives life span!</p>"
+		else
+			echo "<p style="color:green\;margin-left:10px\;margin-right:10px\;">Your config data will persist after a reboot</p>"
+		fi
+	else
+		echo "<p style="color:red\;margin-left:10px\;margin-right:10px\;"><b>WARNING:</b> Your config directory does not exist. You likely need to run the program once to create it.</p>"
+	fi
+}
+
+
+# read our configuration
+source /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+CONFIG="/boot/config/plugins/webvirtmgr/webvirtmgr.cfg"
+
+case "$1" in
+	'start')
+		webvirtmgr_start
+	;;
+	'stop')
+		webvirtmgr_stop
+	;;
+	'restart')
+		webvirtmgr_restart
+	;;
+	'enable')
+		webvirtmgr_enable $2 $3 $4 $5 $6 $7 $8
+	;;
+	'disable')
+		webvirtmgr_disable $2 $3 $4 $5 $6 $7 $8
+	;;
+	'install')
+		webvirtmgr_install
+	;;
+	'createsuperuser')
+		webvirtmgr_createsuperuser
+	;;
+	'changepassword')
+		webvirtmgr_changepassword
+	;;
+	'update')
+		webvirtmgr_update $2
+	;;
+	'storagesize')
+		webvirtmgr_storagesize
+	;;
+	'datacheck')
+		webvirtmgr_datacheck
+	;;
+	'buttonstart')
+		webvirtmgr_buttonstart
+	;;
+	*)
+	echo "usage $0 start|stop|restart|enable|disable|install|createsuperuser|changepassword|update|storagesize|datacheck"
+esac
