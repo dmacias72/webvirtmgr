@@ -148,7 +148,7 @@ if ($webvirtmgr_installed=="yes") {
 		</div>
 	<?endif;?>
 	<div id="title">
-		<span class="left">Information:&#32;<img src='/plugins/webvirtmgr/information.png'></span>
+		<span class="left">Information:&#32;</span>
 	</div>
 	<? if ($webvirtmgr_installed=="yes"): ?>  
 		<? if ($webvirtmgr_gitstatus=="update"): ?>  
