@@ -76,26 +76,6 @@ get from github as tarball
 </FILE>
 
 <!--
-Install script.
--->
-<FILE Name="/tmp/hp-chkconf" Run="/bin/bash">
-<INLINE>
-<![CDATA[
-# This will check each entry in the config so nothing is missing, and if missing, sets to default
-CFGFILE=/boot/config/plugins/webvirtmgr/webvirtmgr.cfg
-[ ! `cat "$CFGFILE" | grep SERVICE` ] && echo "SERVICE=\"disable\"" >> "$CFGFILE"
-[ ! `cat "$CFGFILE" | grep INSTALLDIR` ] && echo "INSTALLDIR=\"/usr/local/webvirtmgr\"" >> "$CFGFILE"
-[ ! `cat "$CFGFILE" | grep ^PORT` ] && echo "PORT=\"8000\"" >> "$CFGFILE"
-[ ! `cat "$CFGFILE" | grep RUNAS` ] && echo "RUNAS=\"nobody\"" >> "$CFGFILE"
-[ ! `cat "$CFGFILE" | grep USERNAME` ] && echo "USERNAME=\"yes\"" >> "$CFGFILE"
-[ ! `cat "$CFGFILE" | grep PASSWORD` ] && echo "PASSWORD=\"yes\"" >> "$CFGFILE"
-[ ! `cat "$CFGFILE" | grep SHOWLOGIN` ] && echo "SHOWLOGIN=\"yes\"" >> "$CFGFILE"
-rm /tmp/hp-chkconf
-]]>
-</INLINE>
-</FILE>
-
-<!--
 The 'install' script.
 -->
 <FILE Run="/bin/bash">
@@ -122,5 +102,21 @@ rm -f /etc/rc.d/rc.&name;
 </INLINE>
 </FILE>
 
-</PLUGIN>
+<FILE Name="/tmp/hp-chkconf" Run="/bin/bash">
+<INLINE>
+<![CDATA[
+# This will check each entry in the config so nothing is missing, and if missing, sets to default
+CFGFILE=/boot/config/plugins/webvirtmgr/webvirtmgr.cfg
+[ ! `cat "$CFGFILE" | grep SERVICE` ] && echo "SERVICE=\"disable\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep INSTALLDIR` ] && echo "INSTALLDIR=\"/usr/local/webvirtmgr\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep ^PORT` ] && echo "PORT=\"8000\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep RUNAS` ] && echo "RUNAS=\"nobody\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep USERNAME` ] && echo "USERNAME=\"yes\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep PASSWORD` ] && echo "PASSWORD=\"yes\"" >> "$CFGFILE"
+[ ! `cat "$CFGFILE" | grep SHOWLOGIN` ] && echo "SHOWLOGIN=\"yes\"" >> "$CFGFILE"
+rm /tmp/hp-chkconf
+]]>
+</INLINE>
+</FILE>
 
+</PLUGIN>

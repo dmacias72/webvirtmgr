@@ -249,9 +249,9 @@ if ($webvirtmgr_installed=="yes") {
 		<? endif; ?>
 	<? endif; ?>
 <? endif; ?>
+
 <script type="text/javascript">
-function checkRUNNING(form)
-{
+function checkRUNNING(form) {
 	if ("<?=$webvirtmgr_running;?>" == "yes")
 	{
 		form.arg2.readOnly = true;
@@ -276,8 +276,7 @@ function checkRUNNING(form)
    }
 }
  
-function checkUSER(form)
-{
+function checkUSER(form) {
 	if (form.runas.selectedIndex < 2 ) {
 		form.arg5.value = form.runas.options[form.runas.selectedIndex].value;
 		form.arg5.type = "hidden";
@@ -288,8 +287,7 @@ function checkUSER(form)
 	}
 }
 
-function checkUSERNAME(form)
-{
+function checkUSERNAME(form) {
 	if (form.username.selectedIndex < 1 ) {
 		form.arg6.value = "";
 		form.arg6.type = "text";
@@ -305,8 +303,7 @@ function checkUSERNAME(form)
 	}
 }
 
-function verifyDATA(form)
-{
+function verifyDATA(form) {
 	if (form.arg2.value == null || !(/\S/.test(form.arg2.value))){
 		form.arg2.value = "/usr/local/webvirtmgr";
 	}
@@ -357,10 +354,6 @@ function checkDISPLAY(form) {
 	} else {
 		form.arg4.value = "yes";
 	}
-}
-
-function isNumber(n) {
-	return !isNaN(parseFloat(n)) && isFinite(n);
 }
 
 checkUSER(document.webvirtmgr_settings);
