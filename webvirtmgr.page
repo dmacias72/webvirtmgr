@@ -172,8 +172,8 @@ if ($webvirtmgr_installed=="yes") {
 	<div id="title">
 		<span class="left">Configuration:&#32;</span>
 	</div>
-	<form name="webvirtmgr_settings" method="POST" action="/plugins/webGui/exec.php" target="progressFrame">
-		<input type="hidden" name="command" value="/etc/rc.d/rc.webvirtmgr">
+	<form name="webvirtmgr_settings" method="POST" action="/update.htm" target="progressFrame">
+		<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr">
 		<table class="settings">
 			<tr>
 				<td>Enable WebVirtMgr:
@@ -232,7 +232,7 @@ if ($webvirtmgr_installed=="yes") {
 		<? endif; ?>
 		</table>
 		<div align="center">
-			<input type="submit" value="Apply" style="margin-bottom:8px" onClick="verifyDATA(this.form);">
+			<input type="submit" name="runCmd" value="Apply" style="margin-bottom:8px" onClick="verifyDATA(this.form);">
 			<button type="button" style="margin-bottom:35px" onClick="done();">Done</button>
 		</div>
 	</form>
