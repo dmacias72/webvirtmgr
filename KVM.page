@@ -5,7 +5,6 @@ Type="xmenu"
 ---
 <?php
 	require('/usr/local/emhttp/plugins/webvirtmgr/webvirtcfg.php');
-	$network_cfg = parse_ini_file( "/boot/config/network.cfg" );
 ?>
 <div  id="webvirtmgrdisplay" style="width: 98%; float:right">
 	<table>

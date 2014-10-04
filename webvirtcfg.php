@@ -1,4 +1,5 @@
-<?PHP
+<?php include '/usr/local/emhttp/plugins/webvirtmgr/webvirtmgr.css';?>
+<?php
 # -------------------------------------------------------------------------
 ## Load current config file and check if program is installed already
 # -------------------------------------------------------------------------
@@ -6,7 +7,7 @@
 # This will clean any ^M characters caused by windows from the config file before use
 if (file_exists("/boot/config/plugins/webvirtmgr/webvirtmgr.cfg"))
 	shell_exec("sed -i 's!\r!!g' '/boot/config/plugins/webvirtmgr/webvirtmgr.cfg'");
-
+$network_cfg = parse_ini_file( "/boot/config/network.cfg" );
 $webvirtmgr_cfg = parse_ini_file( "/boot/config/plugins/webvirtmgr/webvirtmgr.cfg" );
 $webvirtmgr_installed = file_exists( $webvirtmgr_cfg["INSTALLDIR"] . "/manage.py" ) ? "yes" : "no";
 
