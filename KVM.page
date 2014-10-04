@@ -1,0 +1,19 @@
+Cond="(pgrep('-f manage.py')!==FALSE)"
+Icon="icons/default.png"
+Menu="Tasks:70"
+Type="xmenu"
+---
+<?php
+	require('/usr/local/emhttp/plugins/webvirtmgr/webvirtcfg.php');
+	$network_cfg = parse_ini_file( "/boot/config/network.cfg" );
+?>
+<div  id="webvirtmgrdisplay" style="width: 98%; float:right">
+	<table>
+		<tr>
+			<td>
+				<iframe src="http://<?=$network_cfg['IPADDR'];?>:<?=$webvirtmgr_port;?>" name="webvirtmgr" width="950" height="750" frameBorder="0">
+				</iframe>
+			</td>
+		</tr>
+	</table>
+</div>

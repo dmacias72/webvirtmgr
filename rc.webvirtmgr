@@ -19,6 +19,13 @@ webvirtmgr_start()
 		webvirtmgr_install
 	fi
 
+	if [ -d "$INSTALLDIR" ]; then
+		OWNER=$(stat -c %U "$INSTALLDIR")
+		if [ "$OWNER" != "$RUNAS" ]; then
+			chown -R "$RUNAS":users "$INSTALLDIR"
+		fi
+	fi
+
 	echo "Starting Web Virtual Manager"
 	sleep 1
 	sudo -H -u "$RUNAS" /bin/bash -c "nohup /usr/bin/python $INSTALLDIR/manage.py runserver 0:$PORT > /dev/null 2>&1 &"	
@@ -115,7 +122,6 @@ write_config()
 	echo "INSTALLDIR=\"$INSTALLDIR\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 	echo "PORT=\"$PORT\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 	echo "RUNAS=\"$RUNAS\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
-	echo "SHOWDISPLAY=\"$SHOWDISPLAY\"" >> /boot/config/plugins/webvirtmgr/webvirtmgr.cfg
 	sleep 1
 }
 
@@ -132,9 +138,7 @@ webvirtmgr_change_settings()
 
 	PORT="$2"
 
-	SHOWDISPLAY="$3"
-
-	RUNAS="$4"
+	RUNAS="$3"
 
 	# create webvirtmgr user if necessary
 	if [[ "$RUNAS" != "nobody" && "$RUNAS" != "root" ]]; then
@@ -144,16 +148,9 @@ webvirtmgr_change_settings()
 		fi
 	fi
 
-	if [ -d "$INSTALLDIR" ]; then
-		OWNER=$(stat -c %U "$INSTALLDIR")
-		if [ "$OWNER" != "$RUNAS" ]; then
-			chown -R "$RUNAS":users "$INSTALLDIR"
-		fi
-	fi
-
-	USERNAME="$5"
-	PASSWORD="$6"
-	USERPASS="$7"
+	USERNAME="$4"
+	PASSWORD="$5"
+	USERPASS="$6"
 
 	if [ "$USERPASS" == "create" ]; then
 			echo "Creating new user $USERNAME..."
@@ -171,7 +168,7 @@ webvirtmgr_change_settings()
 webvirtmgr_enable()
 {
 	SERVICE=enable
-	webvirtmgr_change_settings $1 $2 $3 $4 $5 $6 $7
+	webvirtmgr_change_settings $1 $2 $3 $4 $5 $6 
 	write_config
 	if [ "$RESTARTSERVICE" == "yes" ]; then
 		webvirtmgr_restart
@@ -182,7 +179,7 @@ webvirtmgr_disable()
 {
 	webvirtmgr_stop
 	SERVICE=disable
-	webvirtmgr_change_settings $1 $2 $3 $4 $5 $6 $7
+	webvirtmgr_change_settings $1 $2 $3 $4 $5 $6 
 	write_config
 }
 
@@ -321,10 +318,10 @@ case "$1" in
 		webvirtmgr_restart
 	;;
 	'enable')
-		webvirtmgr_enable $2 $3 $4 $5 $6 $7 $8
+		webvirtmgr_enable $2 $3 $4 $5 $6 $7 
 	;;
 	'disable')
-		webvirtmgr_disable $2 $3 $4 $5 $6 $7 $8
+		webvirtmgr_disable $2 $3 $4 $5 $6 $7
 	;;
 	'install')
 		webvirtmgr_install
