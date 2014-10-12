@@ -10,7 +10,7 @@ Title="KVM Manager"
 		<span class="left"><img src="/plugins/webGui/icons/default.png" class="icon" width="16" height="16">Status&#32;
 			<?if ($webvirtmgr_installed=="yes"):?>
 				<?if ($webvirtmgr_running=="yes"):?>
-					<a href="http://<?=$network_cfg['IPADDR'];?>:<?=$webvirtmgr_port;?>" target="_blank">
+					<a href="http://<?=gethostname();?>:<?=$webvirtmgr_port;?>" target="_blank">
 						<span class="green"><b>RUNNING</b></span>
 						<span style="font-size:12px;"> with version: <b><?=$webvirtmgr_curversion?></b></span>
 					</a>

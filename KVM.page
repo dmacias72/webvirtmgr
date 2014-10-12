@@ -10,7 +10,7 @@ Type="xmenu"
 	<table>
 		<tr>
 			<td>
-				<iframe src="http://<?=$network_cfg['IPADDR'];?>:<?=$webvirtmgr_port;?>" name="webvirtmgr" width="950" height="750" frameBorder="0">
+				<iframe src="http://<?=gethostname();?>:<?=$webvirtmgr_port;?>" name="webvirtmgr" width="950" height="750" frameBorder="0">
 				</iframe>
 			</td>
 		</tr>
