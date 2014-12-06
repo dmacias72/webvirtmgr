@@ -25,29 +25,29 @@ Title="KVM Manager"
 	<?if ($webvirtmgr_installed=="yes"):?>
 		<?if ($webvirtmgr_running=="yes"):?>
 			<div style="position:relative;float:left;width:50%;text-align:right; margin-bottom:24px">
-				<form name="webvirtmgr_start_stop" method="POST" action="/plugins/webGui/exec.php" target="progressFrame">
-					<input type="hidden" name="command" value="/etc/rc.d/rc.webvirtmgr stop  ">
-					<input type="submit" value="Stop">
+				<form name="webvirtmgr_start_stop" method="POST" action="/update.htm" target="progressFrame">
+					<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr stop  ">
+					<input type="submit" name="runCmd" value="Stop">
 				</form>
 			</div>
 			<div style="position:relative;float:left;width:50%;margin-bottom:24px">
-				<form name="webvirtmgr_restart" method="POST" action="/plugins/webGui/exec.php" target="progressFrame">
-					<input type="hidden" name="command" value="/etc/rc.d/rc.webvirtmgr restart  ">
-					<input type="submit" value="Restart">
+				<form name="webvirtmgr_restart" method="POST" action="/update.htm" target="progressFrame">
+					<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr restart  ">
+					<input type="submit" name="runCmd" value="Restart">
 				</form>
 			</div>
 		<?else:?>
 			<div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
-				<form name="webvirtmgr_start" method="POST" action="/plugins/webGui/exec.php" target="progressFrame">
-					<input type="hidden" name="command" value="/etc/rc.d/rc.webvirtmgr buttonstart  ">
-					<input type="submit" value="Start">
+				<form name="webvirtmgr_start" method="POST" action="/update.htm" target="progressFrame">
+					<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr buttonstart  ">
+					<input type="submit" name="runCmd" value="Start">
 				</form>
 			</div>
 		<?endif;?>
 	<?else:?>
 		<div style="position:relative;float:left;width:100%;text-align:center;margin-bottom:24px">
-			<form name="webvirtmgr_install" method="POST" action="/plugins/webGui/exec.php" target="progressFrame">
-				<input type="hidden" name="command" value="/etc/rc.d/rc.webvirtmgr install  ">          
+			<form name="webvirtmgr_install" method="POST" action="/update.htm" target="progressFrame">
+				<input type="hidden" name="cmd" value="/etc/rc.d/rc.webvirtmgr install  ">          
 				<input type="submit" value="Install">
 			</form>
 		</div>
